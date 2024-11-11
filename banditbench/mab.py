@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Dict, Any, Tuple, Union, List, Optional
 import numpy as np
-from banditbench.tasks.mab_scenarios import BanditScenario, BanditConfig, VideoWatching, ButtonPushing, ClothesShopping, OnlineAds
+from banditbench.tasks.mab.scenarios import BanditScenario, BanditConfig
 
 State = Union[None, Any]
 BernArmParam = float

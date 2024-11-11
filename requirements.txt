@@ -1,2 +1,3 @@
 pydantic
 litellm
+tensorflow_datasets

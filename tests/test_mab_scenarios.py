@@ -1,4 +1,4 @@
-from banditbench.tasks.mab_scenarios import ButtonPushing
+from banditbench.tasks.mab.scenarios import ButtonPushing
 
 
 def test_button_pushing():
