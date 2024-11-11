@@ -1,7 +1,6 @@
 import math
 import scipy
 import numpy as np
-from pydantic import BaseModel
 from typing import List, Dict, Any, Union
 from banditbench.mab import State, Bandit, MultiArmedBandit
 
@@ -19,59 +18,6 @@ class Agent:
     def update(self, obs: State, action: int, reward: float) -> None:
         """The action performs an update step based on the action it chose, and the reward it received."""
         raise NotImplementedError
-
-    def get_guide_info(self) -> Dict[str, Any]:
-        raise NotImplementedError("This agent does not provide any guide info.")
-
-
-class ActionInfoField(BaseModel):
-    info_name: str  # such as "exploitation value"
-    info_template: Union[str, None] # Note, we only support non-key-value templates, like "value name = {:.2f}"
-    value: Union[float, str]
-
-    def __init__(self, info_name: str, value: Union[float, str], info_template: Union[str, None] = None):
-        super().__init__(info_name=info_name, value=value, info_template=info_template)
-
-    def __str__(self):
-        if self.info_template is None:
-            if isinstance(self.value, float):
-                return f"{self.info_name} {self.value:.2f}"
-            else:
-                return f"{self.info_name} {self.value}"
-        else:
-            return self.info_template.format(self.value)
-
-    def to_str(self):
-        return str(self)
-    
-    def __add__(self, other: Union['ActionInfoField', 'ActionInfo']):
-        if isinstance(other, ActionInfoField):
-            return ActionInfo(action_info_fields=[self, other])
-        elif isinstance(other, ActionInfo):
-            return ActionInfo(action_info_fields=self.action_infos + other.action_infos)
-        else:
-            raise ValueError(f"Unsupported type: {type(other)}")
-
-class ActionInfo(BaseModel):
-    # an action can have multiple fields (of information)
-    action_info_fields: List[ActionInfoField]
-
-    def __str__(self):
-        return ", ".join([info.to_str() for info in self.action_info_fields])
-
-    def to_str(self):
-        return str(self)
-    
-    def __len__(self):
-        return len(self.action_infos)
-    
-    def __add__(self, other: Union['ActionInfo', 'ActionInfoField']):
-        if isinstance(other, ActionInfoField):
-            return ActionInfo(action_info_fields=self.action_info_fields + [other])
-        elif isinstance(other, ActionInfo):
-            return ActionInfo(action_info_fields=self.action_info_fields + other.action_info_fields)
-        else:
-            raise ValueError(f"Unsupported type: {type(other)}")
 
 class UCBAgent(Agent):
     """alpha-UCB, where alpha is the exploration bonus coefficient"""
@@ -126,20 +72,6 @@ class UCBAgent(Agent):
         self.arms[action] += 1
         self.rewards[action] += reward
 
-    def get_guide_info(self) -> List[ActionInfo]:
-        actions_info = []
-        for arm in range(self.k_arms):
-            exploration_bonus = self.calculate_exp_bonus(arm) if self.arms[arm] > 0 else "inf"
-            exp_bonus_guide = ActionInfoField(info_name='exploration_bonus', value=exploration_bonus)
-
-            exploitation_value = self.calculate_exp_value(arm) if self.arms[arm] > 0 else 0
-            exp_value_guide = ActionInfoField(info_name='exploitation_value', value=exploitation_value)
-
-            actions_info.append(exp_bonus_guide + exp_value_guide)
-
-        assert len(actions_info) == len(self.actions)
-        return actions_info
-
 
 class GreedyAgent(UCBAgent):
     """
@@ -152,14 +84,6 @@ class GreedyAgent(UCBAgent):
 
     def calculate_arm_value(self, arm: int) -> float:
         return self.rewards[arm] / self.arms[arm]
-
-    def get_guide_info(self) -> List[ActionInfo]:
-        actions_info = []
-        for arm in range(self.k_arms):
-            exploitation_value = self.calculate_exp_value(arm) if self.arms[arm] > 0 else 0
-            exp_value_guide = ActionInfoField(info_name='exploitation_value', value=exploitation_value)
-            actions_info.append(exp_value_guide)
-        return actions_info
 
 class ThompsonSamplingAgent(UCBAgent):
     name: str = "ThompsonSampling"
@@ -184,18 +108,3 @@ class ThompsonSamplingAgent(UCBAgent):
     def update(self, obs: State, action: int, reward: float) -> None:
         self.alpha[action] += reward
         self.beta[action] += 1 - reward
-
-    def get_guide_info(self) -> List[ActionInfo]:
-        actions_info = []
-        for arm in range(self.k_arms):
-            alpha = self.alpha[arm]
-            beta = self.beta[arm]
-            p = scipy.stats.beta.rvs(self.alpha[arm], self.beta[arm])
-            alpha_guide = ActionInfoField(info_name='alpha', value=alpha, info_template='Prior Beta Distribution(alpha={:.2f}')
-            beta_guide = ActionInfoField(info_name='beta', value=beta, info_template='beta={:.2f})')
-            probability_guide = ActionInfoField(info_name='probability', value=p, info_template='Posterior Bernoulli p={:.2f}')
-
-            actions_info.append(alpha_guide + beta_guide + probability_guide)
-
-        assert len(actions_info) == len(self.actions)
-        return actions_info
