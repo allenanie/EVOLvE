@@ -46,9 +46,9 @@ class ActionInfoField(BaseModel):
     
     def __add__(self, other: Union['ActionInfoField', 'ActionInfo']):
         if isinstance(other, ActionInfoField):
-            return ActionInfo(action_infos=[self, other])
+            return ActionInfo(action_info_fields=[self, other])
         elif isinstance(other, ActionInfo):
-            return ActionInfo(action_infos=self.action_infos + other.action_infos)
+            return ActionInfo(action_info_fields=self.action_infos + other.action_infos)
         else:
             raise ValueError(f"Unsupported type: {type(other)}")
 
@@ -64,6 +64,14 @@ class ActionInfo(BaseModel):
     
     def __len__(self):
         return len(self.action_infos)
+    
+    def __add__(self, other: Union['ActionInfo', 'ActionInfoField']):
+        if isinstance(other, ActionInfoField):
+            return ActionInfo(action_info_fields=self.action_info_fields + [other])
+        elif isinstance(other, ActionInfo):
+            return ActionInfo(action_info_fields=self.action_info_fields + other.action_info_fields)
+        else:
+            raise ValueError(f"Unsupported type: {type(other)}")
 
 class UCBAgent(Agent):
     """alpha-UCB, where alpha is the exploration bonus coefficient"""
@@ -124,7 +132,7 @@ class UCBAgent(Agent):
             exploration_bonus = self.calculate_exp_bonus(arm) if self.arms[arm] > 0 else "inf"
             exp_bonus_guide = ActionInfoField(info_name='exploration_bonus', value=exploration_bonus)
 
-            exploitation_value = self.calculate_exp_value(arm)
+            exploitation_value = self.calculate_exp_value(arm) if self.arms[arm] > 0 else 0
             exp_value_guide = ActionInfoField(info_name='exploitation_value', value=exploitation_value)
 
             actions_info.append(exp_bonus_guide + exp_value_guide)
@@ -148,7 +156,7 @@ class GreedyAgent(UCBAgent):
     def get_guide_info(self) -> List[ActionInfo]:
         actions_info = []
         for arm in range(self.k_arms):
-            exploitation_value = self.calculate_exp_value(arm)
+            exploitation_value = self.calculate_exp_value(arm) if self.arms[arm] > 0 else 0
             exp_value_guide = ActionInfoField(info_name='exploitation_value', value=exploitation_value)
             actions_info.append(exp_value_guide)
         return actions_info
@@ -157,9 +165,9 @@ class ThompsonSamplingAgent(UCBAgent):
     name: str = "ThompsonSampling"
 
     def __init__(self, env: MultiArmedBandit, alpha_prior: float = 1.0, beta_prior: float = 1.0) -> None:
-        super().__init__(env)
         self.alpha_prior = alpha_prior
         self.beta_prior = beta_prior
+        super().__init__(env)
         self.reset()
 
     def reset(self):
@@ -183,7 +191,7 @@ class ThompsonSamplingAgent(UCBAgent):
             alpha = self.alpha[arm]
             beta = self.beta[arm]
             p = scipy.stats.beta.rvs(self.alpha[arm], self.beta[arm])
-            alpha_guide = ActionInfoField(info_name='alpha', value=alpha, info_template='Prior Beta Distribution(alpha={:.2f})')
+            alpha_guide = ActionInfoField(info_name='alpha', value=alpha, info_template='Prior Beta Distribution(alpha={:.2f}')
             beta_guide = ActionInfoField(info_name='beta', value=beta, info_template='beta={:.2f})')
             probability_guide = ActionInfoField(info_name='probability', value=p, info_template='Posterior Bernoulli p={:.2f}')
 
