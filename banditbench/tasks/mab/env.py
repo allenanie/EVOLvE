@@ -1,16 +1,13 @@
 from pydantic import BaseModel
 from typing import Dict, Any, Tuple, Union, List, Optional
 import numpy as np
-from banditbench.tasks.mab.scenarios import BanditScenario, BanditConfig
+from banditbench.tasks.scenario import BanditScenario, BanditConfig
+from banditbench.tasks.mab.scenarios import ButtonPushing, OnlineAds, VideoWatching, ClothesShopping
+from banditbench.tasks.env import State, Action, ExpectedReward, Bandit
 
-State = Union[None, Any]
 BernArmParam = float
 GaussianArmParam = Tuple[float, float]
 BanditArmParam = Union[BernArmParam, GaussianArmParam]
-
-Action = Union[int, str]
-ExpectedReward = float
-
 
 class Interaction(BaseModel):
     action: Action
@@ -19,27 +16,6 @@ class Interaction(BaseModel):
 
     def __init__(self, action: Action, expected_reward: ExpectedReward, is_random: Union[bool, None] = None) -> None:
         super().__init__(action=action, expected_reward=expected_reward, is_random=is_random)
-
-
-class Bandit:
-    num_arms: int
-    horizon: int
-    seed: Optional[int]
-    h: int
-
-    def reset(self) -> Any:
-        raise NotImplementedError
-
-    def step(self, action: int) -> Tuple[State, float, bool, Dict[str, Any]]:
-        raise NotImplementedError
-
-    def reward_fn(self, context: State, action: int) -> float:
-        raise NotImplementedError
-
-    def set_seed(self, seed: Optional[int] = None) -> None:
-        self.seed = seed
-        self.np_random = np.random.default_rng(self.seed)
-
 
 class MultiArmedBandit(Bandit):
     arm_params: List[BanditArmParam]
@@ -64,6 +40,14 @@ class MultiArmedBandit(Bandit):
         self.history = []
         self.h = 0
 
+    def reward_fn(self, action: int) -> float:
+        """In a stochastic bandit, this samples from R_t for the given action"""
+        raise NotImplementedError
+
+    def expected_reward(self, action: int) -> float:
+        """In a stochastic bandit, this retrieves the E[R_t] for the given action"""
+        raise NotImplementedError
+
     def shuffle_arms(self) -> None:
         self.np_random.shuffle(self.arm_params)
 
@@ -83,12 +67,12 @@ class MultiArmedBandit(Bandit):
 
         self.h += 1
         done = self.h == self.horizon
-        reward = self.reward_fn(None, action)
+        reward = self.reward_fn(action)
         self.history.append(Interaction(action, self.expected_reward(action)))
 
         return None, reward, done, info
 
-    def reset(self):
+    def reset(self) -> None:
         self.history = []
         self.h = 0
 
@@ -107,11 +91,16 @@ class BernoulliBandit(MultiArmedBandit):
         super(BernoulliBandit, self).__init__(num_arms=num_arms, horizon=horizon, arm_params=arm_params, seed=seed,
                                               instance_hardness=instance_hardness)
 
-    def reward_fn(self, context: State, action: int) -> float:
+    def reward_fn(self, action: int) -> float:
         return 1 if self.np_random.uniform(0, 1) < self.arm_params[action] else 0
 
     def expected_reward(self, action: int) -> float:
         return self.arm_params[action]
+    
+    @property
+    def name(self) -> str:
+        # b_vid_arms5_easy
+        return f"b_arms{self.num_arms}_difficulty_{self.instance_hardness:.1f}"
 
 
 def compute_simple_kl(p_mu, q_mu, sigma):
@@ -133,23 +122,27 @@ class GaussianBandit(MultiArmedBandit):
         super(GaussianBandit, self).__init__(num_arms=num_arms, horizon=horizon, arm_params=arm_params, seed=seed,
                                              instance_hardness=instance_hardness)
 
-    def reward_fn(self, context: State, action: int) -> float:
+    def reward_fn(self, action: int) -> float:
         return self.np_random.normal(self.arm_params[action][0], self.arm_params[action][1])
 
     def expected_reward(self, action: int) -> float:
         return self.arm_params[action][0]
+    
+    @property
+    def name(self) -> str:
+        # b_vid_arms5_easy
+        return f"g_arms{self.num_arms}_difficulty_{self.instance_hardness:.2f}"
 
 
 # Now, we define the LLM-Bandit class, VerbalBandit.
 VerbalState = Union[None, str]
 
-
-class VerbalBandit(Bandit):
+class VerbalMultiArmedBandit(Bandit):
     history: List[Interaction]
 
     def __init__(self,
                  core_bandit: MultiArmedBandit,
-                 bandit_scenario: BanditScenario,
+                 bandit_scenario: Union[str, BanditScenario, type],
                  # ===== arguments for bandit_scenario_cls =====
                  scenario_seed: Optional[int] = None,
                  instruction_type: str = "base",
@@ -187,6 +180,8 @@ class VerbalBandit(Bandit):
 
     def reset(self) -> Any:
         self.core_bandit.reset()
+        verbal_instruction = self.bandit_scenario.get_instruction(self.instruction_type)
+        return verbal_instruction
 
     @property
     def action_names(self) -> List[str]:
@@ -217,3 +212,10 @@ class VerbalBandit(Bandit):
         self.history.append(Interaction(action, self.core_bandit.expected_reward(action_index), is_random))
 
         return verbal_instruction, reward, done, {'is_random': is_random}
+
+    @property
+    def name(self) -> str:
+        # b_vid_arms5_easy
+        bandit_type = "b" if isinstance(self.core_bandit, BernoulliBandit) else "g"
+
+        return f"{bandit_type}_{self.bandit_scenario.name}_arms{self.num_arms}_difficulty_{self.instance_hardness:.1f}"

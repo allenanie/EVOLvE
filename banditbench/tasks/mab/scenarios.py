@@ -6,6 +6,9 @@ from banditbench.tasks.utils import dedent
 from banditbench.tasks.scenario import BanditScenario, BanditConfig
 
 class ScenarioUtil:
+    """
+    Inheriting from this class unifies the subclass' default __init__ method
+    """
     def __init__(self, num_actions: int,
                  num_fewshot: int = 0, few_shot_config: Optional[BanditConfig] = None,
                  seed: Optional[int] = None):
@@ -14,6 +17,7 @@ class ScenarioUtil:
                          num_fewshot=num_fewshot, few_shot_config=few_shot_config, seed=seed)
 
 class ButtonPushing(ScenarioUtil, BanditScenario):
+  name = 'btn'
   
   # 100 actions
   action_names = [
@@ -140,6 +144,8 @@ class ButtonPushing(ScenarioUtil, BanditScenario):
   )
 
 class OnlineAds(ScenarioUtil, BanditScenario):
+  name = 'ads'  
+
   action_names = [
       "A",
       "B",
@@ -273,6 +279,7 @@ class OnlineAds(ScenarioUtil, BanditScenario):
 
 
 class VideoWatching(ScenarioUtil, BanditScenario):
+  name = 'vid'
   action_names = [
       "A",
       "B",
@@ -405,6 +412,8 @@ class VideoWatching(ScenarioUtil, BanditScenario):
   )
 
 class ClothesShopping(ScenarioUtil, BanditScenario):
+  name = 'clothes'
+  
   action_names = [
       "Velvet Vogue Jacket",
       "Silk Serenity Dress",

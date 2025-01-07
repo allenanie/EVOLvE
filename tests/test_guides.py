@@ -1,8 +1,9 @@
-from banditbench.algs.guides import ActionInfo, ActionInfoField, UCBGuide, ThompsonSamplingGuide
-from banditbench.mab import VerbalBandit, BernoulliBandit
-from banditbench.algs.classics import UCBAgent, GreedyAgent, ThompsonSamplingAgent
+from banditbench.algorithms.guides import ActionInfoField, UCBGuide, ThompsonSamplingGuide
+from banditbench.tasks.mab.env import BernoulliBandit
+from banditbench.algorithms.classics import UCBAgent, ThompsonSamplingAgent
 
 def test_action_info_field():
+    print()
     print(str(ActionInfoField("exploration bonus", "0.003") + ActionInfoField("exploitation value", "0.003")))
 
 def test_action_info():

@@ -1,8 +1,7 @@
 import math
 import scipy
 import numpy as np
-from typing import List, Dict, Any, Union
-from banditbench.mab import State, Bandit, MultiArmedBandit
+from banditbench.tasks.mab.env import State, Bandit, MultiArmedBandit
 
 
 class Agent:

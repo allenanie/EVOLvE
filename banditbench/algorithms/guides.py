@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Union
 import scipy
 from pydantic import BaseModel
-from banditbench.algs.classics import Agent, UCBAgent, ThompsonSamplingAgent, GreedyAgent
+from banditbench.algorithms.classics import Agent, UCBAgent, ThompsonSamplingAgent, GreedyAgent
 
 
 class ActionInfoField(BaseModel):

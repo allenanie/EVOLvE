@@ -1,3 +1,5 @@
 pydantic
 litellm
-tensorflow_datasets
+pandas
+jinja2==3.1.2
+tensorflow_datasets==4.9.3
