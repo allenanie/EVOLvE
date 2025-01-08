@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 from banditbench.tasks.utils import dedent
 from banditbench.tasks.scenario import BanditScenario, BanditConfig
 
@@ -17,9 +17,20 @@ class CBConfig(BanditConfig):
         return os.path.join(base_dir, self.get_file_name())
 
 
-class MovieLensScenario(BanditScenario):
+class ScenarioUtil:
+    """
+    Inheriting from this class unifies the subclass' default __init__ method
+    """
+    def __init__(self, action_names, num_actions: int,
+                 num_fewshot: int = 0, few_shot_config: Optional[CBConfig] = None,
+                 seed: Optional[int] = None):
+        super().__init__(num_actions=num_actions, action_names=action_names, action_unit=self.action_unit,
+                         base_description=self.base_description, detailed_description=self.detailed_description,
+                         num_fewshot=num_fewshot, few_shot_config=few_shot_config, seed=seed)
+
+class MovieLensScenario(ScenarioUtil, BanditScenario):
     name = 'movie'
-    unit = 'movie'
+    action_unit = 'movie'
     reward_unit = 'User returned a rating of'
     max_reward = '5'
 

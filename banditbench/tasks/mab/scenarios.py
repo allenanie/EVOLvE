@@ -22,7 +22,7 @@ class ScenarioUtil:
     Inheriting from this class unifies the subclass' default __init__ method
     """
     def __init__(self, num_actions: int,
-                 num_fewshot: int = 0, few_shot_config: Optional[BanditConfig] = None,
+                 num_fewshot: int = 0, few_shot_config: Optional[MABConfig] = None,
                  seed: Optional[int] = None):
         super().__init__(num_actions=num_actions, action_names=self.action_names, action_unit=self.action_unit, 
                          base_description=self.base_description, detailed_description=self.detailed_description, 

@@ -233,11 +233,11 @@ class MovieLensVerbal(VerbalContextualBandit):
                  ) -> None:
         self.core_bandit = core_bandit
         self.instruction_type = instruction_type
-        self.bandit_scenario = MovieLensScenario(num_actions=self.num_arms,
+        self.bandit_scenario = MovieLensScenario(action_names=self.get_actions_text(),
+                                                 num_actions=self.core_bandit.num_arms,
                                                  num_fewshot=num_fewshot,
                                                  few_shot_config=few_shot_config,
                                                  seed=None)  # no action shuffling
-        self.bandit_scenario.action_names = self.get_actions_text()
         self.initialize_defaults()
 
     def initialize_defaults(self) -> None:
