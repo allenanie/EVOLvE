@@ -111,14 +111,6 @@ class MovieLens(ContextualBandit):
 
     def initialize_defaults(self) -> None:
         """Note this is not a reset function. It loads necessary files and processes them."""
-        # https://github.com/scpike/us-state-county-zip/tree/master
-        # load in csv "geo-data.csv" data from the data directory
-        data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'movielens', 'data')
-        self.zipdata = {}
-        with open(os.path.join(data_dir, 'geo-data.csv')) as f:
-            csvfile = csv.DictReader(f)
-            for row in csvfile:
-                self.zipdata[row['zipcode']] = ("{} of {}".format(row['city'], row['county']), row['state'])
 
         # now we run SVD for matrix completion
         # We shuffle the context/users
@@ -144,8 +136,6 @@ class MovieLens(ContextualBandit):
         self._approx_ratings_matrix = np.matmul(
             self._u_hat * self._s_hat, np.transpose(self._v_hat)
         )
-        # remove this:
-        self.prev_user = None
 
     @property
     def verbal_info(self) -> Dict[str, Any]:
@@ -154,21 +144,6 @@ class MovieLens(ContextualBandit):
         :return:
         """
         return self._verbal_info
-
-    # def _get_reward(self, action_idx):
-    #     """Returns the reward (rating) for a given user-movie pair.
-    #
-    #     Args:
-    #         action_idx (int): a number between 0 - max_action, indicating which
-    #           movie in the list.
-    #
-    #     Returns:
-    #         float: The approximated rating for the user-movie pair.
-    #     """
-    #     if self.prev_user is None:
-    #         raise Exception('Need to use get_context() first')
-    #
-    #     return self._approx_ratings_matrix[self.prev_user, action_idx]
 
     def reward_fn(self, state: State, action: Action) -> float:
         """In a contextual bandit, this is a function f(x, a)"""
@@ -237,13 +212,24 @@ class MovieLensVerbal(VerbalContextualBandit):
                  # ===== arguments for bandit_scenario_cls =====
                 ) -> None:
         self.core_bandit = core_bandit
+        self.initialize_defaults()
+
+    def initialize_defaults(self) -> None:
+        # https://github.com/scpike/us-state-county-zip/tree/master
+        # load in csv "geo-data.csv" data from the data directory
+        data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'movielens', 'data')
+        self.zipdata = {}
+        with open(os.path.join(data_dir, 'geo-data.csv')) as f:
+            csvfile = csv.DictReader(f)
+            for row in csvfile:
+                self.zipdata[row['zipcode']] = ("{} of {}".format(row['city'], row['county']), row['state'])
 
     def step(self, state: State, action: Action) -> Tuple[State, float, bool, Dict[str, Any]]:
         """Step function that handles string/int actions and text observations"""
 
         # can add action validation here (instead of taking in a number)
         assert action in [
-            str(i) for i in range(self.k_arms)
+            str(i) for i in range(self.core_bandit.num_arms)
         ], f'Action {action} is not in the action space.'
 
         action_id = int(action)
@@ -256,7 +242,7 @@ class MovieLensVerbal(VerbalContextualBandit):
 
     def reset(self, ctx_seed=None) -> Tuple[State, Info]:
 
-        obs, _ = self.reset()
+        obs, _ = self.core_bandit.reset()
         text = self.get_user_feat_text(obs.feature, obs.info['user_features'])
         obs.feature = text
 
