@@ -1,11 +1,20 @@
 import csv
 
 from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
 from typing import Dict, Any, Tuple, Union, List, Optional
 
 import os
+import numpy as np
 
-from banditbench.tasks.env import State, Action, ExpectedReward, Bandit
+from banditbench.tasks.env import Action, ExpectedReward, Bandit
+
+Info = Union[Dict[str, Any], None]
+
+class State(BaseModel):
+    feature: Any  # numpy array
+    index: Union[int, None]  # a pointer to the dataset (if there is a dataset)
+    info: Info = None  # additional information
 
 
 class Interaction(BaseModel):
@@ -22,15 +31,30 @@ class Interaction(BaseModel):
 class ContextualBandit(Bandit):
     history: List[Interaction]
 
-    def reward_fn(self, state: State, action: int) -> float:
+    def sample_state(self) -> State:
+        """
+        We sample a state from the state distribution
+        """
+        raise NotImplementedError
+
+    def reward_fn(self, state: State, action: Action) -> float:
         """In a contextual bandit, this is a function f(x, a)"""
         raise NotImplementedError
 
-    def reset(self) -> State:
+    def reset(self) -> Tuple[State, Info]:
         raise NotImplementedError
 
     def step(self, state: State, action: Action) -> Tuple[State, float, bool, Dict[str, Any]]:
         raise NotImplementedError
+
+    @property
+    def verbal_info(self) -> Dict[str, Any]:
+        """
+        CB might be able to provide additional information from the dataset about the state
+        :return:
+        """
+        raise NotImplementedError
+
 
 # the step method can be written abstractly (because it just calls core_bandit)
 class VerbalContextualBandit(ContextualBandit):
@@ -38,7 +62,7 @@ class VerbalContextualBandit(ContextualBandit):
 
 
 # Write it all here, but then break into
-class MovieLensCB(ContextualBandit):
+class MovieLens(ContextualBandit):
     def __init__(self,
                  task_name: str,
                  num_arms: int,
@@ -64,24 +88,26 @@ class MovieLensCB(ContextualBandit):
         self.horizon = horizon
         self.rank_k = rank_k
         self.mode = mode
-        self.seed = seed
+        self.set_seed(seed)
 
         self.save_data_dir = save_data_dir
 
         self.history = []
 
-        if self.mode == 'train' and '100k' in self.task_name:
+        if '100k' in self.task_name:
             self.start_user_idx = 0
             self.end_user_idx = 100
-        elif self.mode == 'eval' and '100k' in self.task_name:
-            self.start_user_idx = 100
-        elif self.mode == 'train' and '1m' in self.task_name:
+        elif '1m' in self.task_name:
             self.start_user_idx = 0
             self.end_user_idx = 200
-        elif self.mode == 'eval' and '1m' in self.task_name:
-            self.start_user_idx = 200
 
         self.initialize_defaults()
+
+        self._verbal_info = {
+            'user_idx_to_feats': self._user_idx_to_feats,
+            'movie_idx_to_feats': self._movie_idx_to_feats,
+            'movie_genre_to_text': movie_genre_to_text
+        }
 
     def initialize_defaults(self) -> None:
         """Note this is not a reset function. It loads necessary files and processes them."""
@@ -118,83 +144,79 @@ class MovieLensCB(ContextualBandit):
         self._approx_ratings_matrix = np.matmul(
             self._u_hat * self._s_hat, np.transpose(self._v_hat)
         )
+        # remove this:
         self.prev_user = None
 
-    def _get_reward(self, action_idx):
-        """Returns the reward (rating) for a given user-movie pair.
-
-        Args:
-            action_idx (int): a number between 0 - max_action, indicating which
-              movie in the list.
-
-        Returns:
-            float: The approximated rating for the user-movie pair.
+    @property
+    def verbal_info(self) -> Dict[str, Any]:
         """
-        if self.prev_user is None:
-            raise Exception('Need to use get_context() first')
+        CB might be able to provide additional information from the dataset about the state
+        :return:
+        """
+        return self._verbal_info
 
-        return self._approx_ratings_matrix[self.prev_user, action_idx]
+    # def _get_reward(self, action_idx):
+    #     """Returns the reward (rating) for a given user-movie pair.
+    #
+    #     Args:
+    #         action_idx (int): a number between 0 - max_action, indicating which
+    #           movie in the list.
+    #
+    #     Returns:
+    #         float: The approximated rating for the user-movie pair.
+    #     """
+    #     if self.prev_user is None:
+    #         raise Exception('Need to use get_context() first')
+    #
+    #     return self._approx_ratings_matrix[self.prev_user, action_idx]
 
-    def get_context(self):
+    def reward_fn(self, state: State, action: Action) -> float:
+        """In a contextual bandit, this is a function f(x, a)"""
+        user_index = state.index
+        return self._approx_ratings_matrix[user_index, action]
+
+    def sample_state(self) -> State:
         """Returns the context for a given user.
 
         Returns:
             tuple: (svd_features, feat_dict)
         """
-        if self.split == 'train':
-            user_index = random.randint(self.start_user_idx, self.end_user_idx - 1)
+        if self.mode == 'train':
+            user_index = self.np_random.integers(self.start_user_idx, self.end_user_idx).item()
         else:
-            user_index = random.randint(self.start_user_idx, self._num_users - 1)
-
-        # user_index = random.randint(0, self._num_users - 1)  # both ends included
-
-        self.prev_user = user_index
+            user_index = self.np_random.integers(self.end_user_idx, self._num_users).item()
 
         # Get user features from SVD
         svd_features = self._u_hat[user_index]
         user_features = self._user_idx_to_feats[user_index]
 
+        # this user_feature is a partial information feature
+        # the svd user feature is the full information feature
         feat_dict = {
-            'oracle_feat': svd_features,
-            'user_features': user_features,
-            'user_index': user_index,
+            'user_features': user_features
         }
 
-        return svd_features, feat_dict
+        state = State(feature=svd_features, index=user_index, info=feat_dict)
 
-    def step(self, action):
-        if not self.llm_readable:
-            action = str(action)
+        return state
 
-        assert action in [
-            str(i) for i in range(self.k_arms)
-        ], f'Action {action} is not in the action space.'
-
-        action_id = int(action)
-
+    def step(self, state: State, action: Action):
+        """Core step function that takes integer action and returns vector observation"""
         self.h += 1
         if self.h < self.horizon:
             done = False
         else:
             done = True
 
-        reward = self._get_reward(action_id)
-        self.actions_taken.append(action_id)
+        reward = self.reward_fn(state, action)
+        self.actions_taken.append(action)
         self.avg_rewards.append(reward)
 
-        # get a new observation, if not done
-        obs, info = self.get_context()
+        obs = self.sample_state()
 
-        if self.llm_readable:
-            obs = self.get_user_feat_text(obs, info['user_features'])
+        return obs, reward, done, {}
 
-        # returns observation of a new user
-        # reward for the previous user
-        # whether we terminate, and extra info
-
-        return obs, reward, done, info
-
-    def reset(self, ctx_seed=None):
+    def reset(self, ctx_seed=None) -> Tuple[State, Info]:
         self.avg_rewards = []
         self.actions_taken = []
         self.h = 0
@@ -202,13 +224,43 @@ class MovieLensCB(ContextualBandit):
         if ctx_seed is not None:
             # ctx_seed decides sampling order
             self.ctx_seed = ctx_seed
-            random.seed(ctx_seed)
+            self.set_seed(ctx_seed)
 
-        obs, info = self.get_context()
-        if self.llm_readable:
-            obs = self.get_user_feat_text(obs, info['user_features'])
+        obs = self.sample_state()
 
-        return obs, info
+        return obs, None
+
+
+class MovieLensVerbal(VerbalContextualBandit):
+    def __init__(self,
+                 core_bandit: MovieLens,
+                 # ===== arguments for bandit_scenario_cls =====
+                ) -> None:
+        self.core_bandit = core_bandit
+
+    def step(self, state: State, action: Action) -> Tuple[State, float, bool, Dict[str, Any]]:
+        """Step function that handles string/int actions and text observations"""
+
+        # can add action validation here (instead of taking in a number)
+        assert action in [
+            str(i) for i in range(self.k_arms)
+        ], f'Action {action} is not in the action space.'
+
+        action_id = int(action)
+
+        obs, reward, done, info = self.core_bandit.step(action_id)
+        text = self.get_user_feat_text(obs.feature, obs.info['user_features'])
+        obs.feature = text
+
+        return obs, reward, done, info
+
+    def reset(self, ctx_seed=None) -> Tuple[State, Info]:
+
+        obs, _ = self.reset()
+        text = self.get_user_feat_text(obs.feature, obs.info['user_features'])
+        obs.feature = text
+
+        return obs, None
 
     def get_actions_text(self, genre=True):
         """
@@ -217,8 +269,11 @@ class MovieLensCB(ContextualBandit):
         """
 
         options = []
-        for i in range(len(self._movie_idx_to_feats)):
-            movie_name, genres = self._movie_idx_to_feats[i]
+        movie_idx_to_feats = self.core_bandit.verbal_info['movie_idx_to_feats']
+        movie_genre_to_text = self.core_bandit.verbal_info['movie_genre_to_text']
+
+        for i in range(len(movie_idx_to_feats)):
+            movie_name, genres = movie_idx_to_feats[i]
             # avoid "Empire Strikes Back, The"
             # should be "The Empire Strikes Back"
 
@@ -239,7 +294,7 @@ class MovieLensCB(ContextualBandit):
             else:
                 genres = genres.tolist()
             for g in genres:
-                genre_text += self.movie_genre_to_text[int(g)] + '|'
+                genre_text += movie_genre_to_text[int(g)] + '|'
 
             if genre:
                 options.append(f'{movie_name} ({genre_text[:-1]})')
@@ -371,14 +426,11 @@ class MovieLensCB(ContextualBandit):
         return description
 
 
-class MovieLensVerbalCB(VerbalContextualBandit):
-    pass
-
-
 import numpy as np
 import re
 import tensorflow_datasets as tfds
 
+# Remove these two??
 MOVIELENS_NUM_USERS = 943
 MOVIELENS_NUM_MOVIES = 1682
 

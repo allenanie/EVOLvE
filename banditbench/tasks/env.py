@@ -1,7 +1,6 @@
 from typing import Dict, Any, Tuple, Union, List, Optional
 import numpy as np
 
-State = Union[None, Any]
 Action = Union[int, str]
 ExpectedReward = float
 

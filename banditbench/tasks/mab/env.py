@@ -3,7 +3,7 @@ from typing import Dict, Any, Tuple, Union, List, Optional
 import numpy as np
 from banditbench.tasks.scenario import BanditScenario, BanditConfig
 from banditbench.tasks.mab.scenarios import ButtonPushing, OnlineAds, VideoWatching, ClothesShopping
-from banditbench.tasks.env import State, Action, ExpectedReward, Bandit
+from banditbench.tasks.env import Action, ExpectedReward, Bandit
 
 BernArmParam = float
 GaussianArmParam = Tuple[float, float]
@@ -56,7 +56,7 @@ class MultiArmedBandit(Bandit):
             self.arm_params) == self.num_arms, f"Number of arm parameters {len(self.arm_params)} does not match number of arms {self.num_arms}."
         assert self.horizon > 0, f"Horizon {self.horizon} must be positive."
 
-    def step(self, action: int) -> Tuple[State, float, bool, Dict[str, Any]]:
+    def step(self, action: int) -> Tuple[None, float, bool, Dict[str, Any]]:
         assert action >= 0 and action < self.num_arms, f"Action {action} is not in the action space [{0}, {self.num_arms}]."
         if self.h >= self.horizon:
             raise ValueError(
