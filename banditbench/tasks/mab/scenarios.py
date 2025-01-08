@@ -5,6 +5,18 @@ from typing import Dict, Any, Tuple, Union, List, Callable, Set, Optional
 from banditbench.tasks.utils import dedent
 from banditbench.tasks.scenario import BanditScenario, BanditConfig
 
+class MABConfig(BanditConfig):
+    bandit_type: str
+    domain: str
+    difficulty: str
+    num_arms: int
+
+    def get_file_name(self):
+        return f"bandit_{self.bandit_type}_{self.domain}_arms{self.num_arms}_{self.difficulty}_trial0_fewshot_equal_space.json"
+
+    def get_file_path(self, base_dir: str):
+        return os.path.join(base_dir, self.get_file_name())
+
 class ScenarioUtil:
     """
     Inheriting from this class unifies the subclass' default __init__ method

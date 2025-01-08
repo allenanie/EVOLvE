@@ -1,13 +1,14 @@
 from pydantic import BaseModel
 from typing import Dict, Any, Tuple, Union, List, Optional
 import numpy as np
-from banditbench.tasks.scenario import BanditScenario, BanditConfig
-from banditbench.tasks.mab.scenarios import ButtonPushing, OnlineAds, VideoWatching, ClothesShopping
+from banditbench.tasks.scenario import BanditScenario
+from banditbench.tasks.mab.scenarios import ButtonPushing, OnlineAds, VideoWatching, ClothesShopping, MABConfig
 from banditbench.tasks.env import Action, ExpectedReward, Bandit
 
 BernArmParam = float
 GaussianArmParam = Tuple[float, float]
 BanditArmParam = Union[BernArmParam, GaussianArmParam]
+
 
 class Interaction(BaseModel):
     action: Action
@@ -16,6 +17,7 @@ class Interaction(BaseModel):
 
     def __init__(self, action: Action, expected_reward: ExpectedReward, is_random: Union[bool, None] = None) -> None:
         super().__init__(action=action, expected_reward=expected_reward, is_random=is_random)
+
 
 class MultiArmedBandit(Bandit):
     arm_params: List[BanditArmParam]
@@ -33,7 +35,6 @@ class MultiArmedBandit(Bandit):
         if seed is not None:
             self.shuffle_arms()
         self.initialize_defaults()
-
 
     def initialize_defaults(self) -> None:
         """Initialize default values for type-annotated attributes, but are instance variables"""
@@ -96,7 +97,7 @@ class BernoulliBandit(MultiArmedBandit):
 
     def expected_reward(self, action: int) -> float:
         return self.arm_params[action]
-    
+
     @property
     def name(self) -> str:
         # b_vid_arms5_easy
@@ -127,7 +128,7 @@ class GaussianBandit(MultiArmedBandit):
 
     def expected_reward(self, action: int) -> float:
         return self.arm_params[action][0]
-    
+
     @property
     def name(self) -> str:
         # b_vid_arms5_easy
@@ -137,6 +138,7 @@ class GaussianBandit(MultiArmedBandit):
 # Now, we define the LLM-Bandit class, VerbalBandit.
 VerbalState = Union[None, str]
 
+
 class VerbalMultiArmedBandit(Bandit):
     history: List[Interaction]
 
@@ -145,8 +147,8 @@ class VerbalMultiArmedBandit(Bandit):
                  bandit_scenario: Union[str, BanditScenario, type],
                  # ===== arguments for bandit_scenario_cls =====
                  scenario_seed: Optional[int] = None,
-                 instruction_type: str = "base",
-                 num_fewshot: int = 0, few_shot_config: Optional[BanditConfig] = None) -> None:
+                 instruction_type: str = "detailed",
+                 num_fewshot: int = 0, few_shot_config: Optional[MABConfig] = None) -> None:
         """
         bandit_scenario: Can be one of three types of inputs: a string, a instantiated BanditScenario class, or the class constructor itself
         """
@@ -161,9 +163,9 @@ class VerbalMultiArmedBandit(Bandit):
             assert bandit_scenario in ["ButtonPushing", "OnlineAds", "VideoWatching",
                                        "ClothesShopping"], "Unknown bandit scenario"
             self.bandit_scenario = eval(bandit_scenario)(num_actions=self.num_arms,
-                                                        num_fewshot=num_fewshot,
-                                                        few_shot_config=few_shot_config,
-                                                        seed=scenario_seed)
+                                                         num_fewshot=num_fewshot,
+                                                         few_shot_config=few_shot_config,
+                                                         seed=scenario_seed)
         elif isinstance(bandit_scenario, type):
             # noinspection PyCallingNonCallable
             self.bandit_scenario = bandit_scenario(num_actions=self.num_arms,
@@ -211,11 +213,11 @@ class VerbalMultiArmedBandit(Bandit):
         verbal_instruction = self.bandit_scenario.get_instruction(self.instruction_type)
         self.history.append(Interaction(action, self.core_bandit.expected_reward(action_index), is_random))
 
+        # TODO: this is wrong. Change to a verbal observation
+
         return verbal_instruction, reward, done, {'is_random': is_random}
 
     @property
     def name(self) -> str:
         # b_vid_arms5_easy
-        bandit_type = "b" if isinstance(self.core_bandit, BernoulliBandit) else "g"
-
-        return f"{bandit_type}_{self.bandit_scenario.name}_arms{self.num_arms}_difficulty_{self.instance_hardness:.1f}"
+        return self.core_bandit.name

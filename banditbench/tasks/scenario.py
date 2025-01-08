@@ -5,17 +5,15 @@ from typing import Dict, Any, Tuple, Union, List, Callable, Set, Optional
 from banditbench.tasks.utils import dedent
 
 
-class BanditConfig(BaseModel):
-    bandit_type: str
-    domain: str
-    difficulty: str
-    num_arms: int
+class BanditConfig:
 
     def get_file_name(self):
-        return f"bandit_{self.bandit_type}_{self.domain}_arms{self.num_arms}_{self.difficulty}_trial0_fewshot_equal_space.json"
+        raise NotImplementedError
+        # return f"bandit_{self.bandit_type}_{self.domain}_arms{self.num_arms}_{self.difficulty}_trial0_fewshot_equal_space.json"
 
     def get_file_path(self, base_dir: str):
-        return os.path.join(base_dir, self.get_file_name())
+        raise NotImplementedError
+        # return os.path.join(base_dir, self.get_file_name())
 
 
 class BanditScenario:
@@ -83,4 +81,3 @@ class BanditScenario:
         """Few-shot examples have their own configuration such as the number of arms, difficulty, scenario, etc."""
         # reminder: you need to implement this later
         raise NotImplementedError
-        return ""

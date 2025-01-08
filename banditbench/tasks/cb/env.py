@@ -11,6 +11,7 @@ from banditbench.tasks.env import Action, ExpectedReward, Bandit
 
 Info = Union[Dict[str, Any], None]
 
+
 class State(BaseModel):
     feature: Any  # numpy array
     index: Union[int, None]  # a pointer to the dataset (if there is a dataset)
@@ -51,6 +52,7 @@ class ContextualBandit(Bandit):
     def verbal_info(self) -> Dict[str, Any]:
         """
         CB might be able to provide additional information from the dataset about the state
+        This property is used by the VerbalContextualBandit
         :return:
         """
         raise NotImplementedError
@@ -58,7 +60,17 @@ class ContextualBandit(Bandit):
 
 # the step method can be written abstractly (because it just calls core_bandit)
 class VerbalContextualBandit(ContextualBandit):
-    pass
+    def __init__(self, core_bandit, *args, **kwargs):
+        self.core_bandit = core_bandit
+
+    @property
+    def name(self) -> str:
+        # cb_1m-ratings_arms10
+        return self.core_bandit.name
+
+
+from banditbench.tasks.cb.movielens.processing import load_data_files, load_movielens_data, movie_genre_to_text, \
+    parse_int_list, safe_decode
 
 
 # Write it all here, but then break into
@@ -138,6 +150,11 @@ class MovieLens(ContextualBandit):
         )
 
     @property
+    def name(self) -> str:
+        # cb_1m-ratings_arms10
+        return f"cb_{self.task_name}_arms{self.num_arms}_mode_{self.mode}"
+
+    @property
     def verbal_info(self) -> Dict[str, Any]:
         """
         CB might be able to provide additional information from the dataset about the state
@@ -205,13 +222,22 @@ class MovieLens(ContextualBandit):
 
         return obs, None
 
+from banditbench.tasks.cb.movielens.scenario import MovieLensScenario, CBConfig
 
 class MovieLensVerbal(VerbalContextualBandit):
     def __init__(self,
                  core_bandit: MovieLens,
                  # ===== arguments for bandit_scenario_cls =====
-                ) -> None:
+                 instruction_type: str = "detailed",
+                 num_fewshot: int = 0, few_shot_config: Optional[CBConfig] = None
+                 ) -> None:
         self.core_bandit = core_bandit
+        self.instruction_type = instruction_type
+        self.bandit_scenario = MovieLensScenario(num_actions=self.num_arms,
+                                                 num_fewshot=num_fewshot,
+                                                 few_shot_config=few_shot_config,
+                                                 seed=None)  # no action shuffling
+        self.bandit_scenario.action_names = self.get_actions_text()
         self.initialize_defaults()
 
     def initialize_defaults(self) -> None:
@@ -246,7 +272,9 @@ class MovieLensVerbal(VerbalContextualBandit):
         text = self.get_user_feat_text(obs.feature, obs.info['user_features'])
         obs.feature = text
 
-        return obs, None
+        verbal_instruction = self.bandit_scenario.get_instruction(self.instruction_type)
+
+        return obs, {'instruction': verbal_instruction}
 
     def get_actions_text(self, genre=True):
         """
@@ -410,133 +438,3 @@ class MovieLensVerbal(VerbalContextualBandit):
 
         description = format_description(user_features)
         return description
-
-
-import numpy as np
-import re
-import tensorflow_datasets as tfds
-
-# Remove these two??
-MOVIELENS_NUM_USERS = 943
-MOVIELENS_NUM_MOVIES = 1682
-
-movie_genre_to_text = [
-    'Action',
-    'Adventure',
-    'Animation',
-    'Children',
-    'Comedy',
-    'Crime',
-    'Documentary',
-    'Drama',
-    'Fantasy',
-    'Film-Noir',
-    'Horror',
-    'IMAX',
-    'Musical',
-    'Mystery',
-    'Romance',
-    'Sci-Fi',
-    'Thriller',
-    'Unknown',
-    'War',
-    'Western',
-    '(no genres listed)',
-]
-
-
-def safe_decode(value, default='Unknown'):
-    if isinstance(value, bytes):
-        try:
-            return value.decode('utf-8')
-        except UnicodeDecodeError:
-            try:
-                return value.decode('latin-1')
-            except UnicodeDecodeError:
-                return default
-    elif isinstance(value, str):
-        try:
-            return eval(value).decode('utf-8')
-        except:
-            return value
-    return str(value)
-
-
-def parse_int_list(s):
-    # Remove square brackets and split by whitespace
-    numbers = re.findall(r'-?\d+', s)
-
-    # Convert strings to floats
-    return [int(num) for num in numbers]
-
-
-def load_data_files(bandit_type, save_data_dir=None):
-    # Try loading cached files first
-    print("loading from tfds")
-    if bandit_type == '100k-ratings':
-        ratings = tfds.load('movielens/100k-ratings', data_dir=save_data_dir)
-    elif bandit_type == '1m-ratings':
-        ratings = tfds.load('movielens/1m-ratings', data_dir=save_data_dir)
-    else:
-        raise Exception('Not implemented yet')
-
-    ratings_df = tfds.as_dataframe(ratings['train'])  # there is only one split
-    print("data converted to pandas dataframe")
-
-    return ratings_df
-
-
-def load_movielens_data(ratings_df, top_k_movies=20, seed=1234):
-    """Need to return three things:
-
-    1.User index to preference mapping (need to start with an index)
-    2. User index to user features
-    3. Movie index to movie features
-
-    The missing rating is filled in with 0.
-    """
-    unique_users = ratings_df['user_id'].unique()
-
-    top_movies = ratings_df['movie_id'].value_counts()[:top_k_movies]
-    # unique_movies = ratings_df['movie_id'].unique()
-    unique_movies = top_movies.index.values
-
-    # users are shuffled each time
-    np.random.seed(seed)
-    np.random.shuffle(unique_users)
-
-    user_id_map = {id: i for i, id in enumerate(unique_users)}
-    movie_id_map = {id: i for i, id in enumerate(unique_movies)}
-    data_matrix = np.zeros((len(unique_users), len(unique_movies)))
-
-    user_idx_to_feats = {}
-    movie_idx_to_feats = {}
-
-    for _, row in ratings_df.iterrows():
-        i = user_id_map[row['user_id']]
-        if row['movie_id'] in movie_id_map:
-            j = movie_id_map[row['movie_id']]
-            data_matrix[i, j] = row['user_rating']
-
-            if j not in movie_idx_to_feats:
-                movie_idx_to_feats[j] = [
-                    row['movie_title'],
-                    row['movie_genres'],
-                ]
-
-        if i not in user_idx_to_feats:
-            if 'raw_user_age' in row:
-                raw_user_age = row['raw_user_age']
-            else:
-                raw_user_age = -1
-
-            user_idx_to_feats[i] = [
-                row['bucketized_user_age'],
-                raw_user_age,
-                row['user_gender'],
-                row['user_occupation_label'],
-                row['user_occupation_text'],
-                str(row['user_zip_code']),
-            ]
-
-    return data_matrix, user_idx_to_feats, movie_idx_to_feats
