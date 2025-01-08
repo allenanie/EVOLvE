@@ -1,24 +1,26 @@
 import math
 import scipy
 import numpy as np
-from banditbench.tasks.mab.env import State, Bandit, MultiArmedBandit
+from banditbench.tasks.mab.env import Bandit, MultiArmedBandit
+from banditbench.tasks.cb.env import State
 
 
-class Agent:
+class MABAgent:
     name: str
 
     def __init__(self, env: Bandit) -> None:
         self.k_arms = env.num_arms
 
-    def act(self, obs: State) -> int:
+    def act(self) -> int:
         """Same as performing a sampling step."""
         raise NotImplementedError
 
-    def update(self, obs: State, action: int, reward: float) -> None:
+    def update(self, action: int, reward: float) -> None:
         """The action performs an update step based on the action it chose, and the reward it received."""
         raise NotImplementedError
 
-class UCBAgent(Agent):
+
+class UCBAgent(MABAgent):
     """alpha-UCB, where alpha is the exploration bonus coefficient"""
     name: str = "UCB"
 
@@ -50,7 +52,7 @@ class UCBAgent(Agent):
 
     def calculate_exp_value(self, arm):
         return self.rewards[arm] / self.arms[arm]
-    
+
     def select_arm(self) -> int:
         """
         Select an arm to pull. Note that we only use self.calculate_arm_value() to select the arm.
@@ -64,10 +66,10 @@ class UCBAgent(Agent):
         arm_values = [self.calculate_arm_value(arm) for arm in range(self.k_arms)]
         return int(np.argmax(arm_values))
 
-    def act(self, obs: State) -> int:
+    def act(self) -> int:
         return self.select_arm()
 
-    def update(self, obs: State, action: int, reward: float) -> None:
+    def update(self, action: int, reward: float) -> None:
         self.arms[action] += 1
         self.rewards[action] += reward
 
@@ -83,6 +85,7 @@ class GreedyAgent(UCBAgent):
 
     def calculate_arm_value(self, arm: int) -> float:
         return self.rewards[arm] / self.arms[arm]
+
 
 class ThompsonSamplingAgent(UCBAgent):
     name: str = "ThompsonSampling"
@@ -104,6 +107,6 @@ class ThompsonSamplingAgent(UCBAgent):
         ]
         return int(np.argmax(samples))
 
-    def update(self, obs: State, action: int, reward: float) -> None:
+    def update(self, action: int, reward: float) -> None:
         self.alpha[action] += reward
         self.beta[action] += 1 - reward

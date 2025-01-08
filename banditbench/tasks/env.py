@@ -14,7 +14,7 @@ class Bandit:
     def initialize_defaults(self) -> None:
         raise NotImplementedError
 
-    def reset(self) -> None:
+    def reset(self) -> Tuple[None, Dict[str, Any]]:
         raise NotImplementedError
 
     def set_seed(self, seed: Optional[int] = None) -> None:

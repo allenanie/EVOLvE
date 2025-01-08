@@ -69,6 +69,7 @@ class VerbalContextualBandit(ContextualBandit):
         return self.core_bandit.name
 
 
+# remember to move them to movilens/env.py
 from banditbench.tasks.cb.movielens.processing import load_data_files, load_movielens_data, movie_genre_to_text, \
     parse_int_list, safe_decode
 

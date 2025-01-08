@@ -135,10 +135,6 @@ class GaussianBandit(MultiArmedBandit):
         return f"g_arms{self.num_arms}_difficulty_{self.instance_hardness:.2f}"
 
 
-# Now, we define the LLM-Bandit class, VerbalBandit.
-VerbalState = Union[None, str]
-
-
 class VerbalMultiArmedBandit(Bandit):
     history: List[Interaction]
 
@@ -183,13 +179,13 @@ class VerbalMultiArmedBandit(Bandit):
     def reset(self) -> Any:
         self.core_bandit.reset()
         verbal_instruction = self.bandit_scenario.get_instruction(self.instruction_type)
-        return verbal_instruction
+        return None, {'instruction': verbal_instruction}
 
     @property
     def action_names(self) -> List[str]:
         return self.bandit_scenario.action_names
 
-    def step(self, action: str) -> Tuple[VerbalState, float, bool, Dict[str, Any]]:
+    def step(self, action: str) -> Tuple[None, float, bool, Dict[str, Any]]:
         """
         action: the action selected by the agent, a string of the actual action name
 
@@ -210,12 +206,9 @@ class VerbalMultiArmedBandit(Bandit):
         state, reward, done, info = self.core_bandit.step(action_index)
         assert state is None, "State should be None for MultiArmedBandit"
 
-        verbal_instruction = self.bandit_scenario.get_instruction(self.instruction_type)
         self.history.append(Interaction(action, self.core_bandit.expected_reward(action_index), is_random))
 
-        # TODO: this is wrong. Change to a verbal observation
-
-        return verbal_instruction, reward, done, {'is_random': is_random}
+        return None, reward, done, {'is_random': is_random}
 
     @property
     def name(self) -> str:
