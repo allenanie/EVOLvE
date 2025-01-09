@@ -142,17 +142,15 @@ class LinUCBAgent(CBAgent):
         self.A = [np.identity(self.d) for _ in range(self.k_arms)]
         self.b = [np.zeros((self.d, 1)) for _ in range(self.k_arms)]
 
-    def act(self, obs: State, get_info=False):
-        action, info = self.select_action(obs)
-        if not get_info:
-            return action
-        else:
-            return action, info
+    def act(self, state: State) -> int:
+        """Same as performing a sampling step."""
+        action = self.select_action(state)
+        return action
 
-    def select_action(self, context: np.ndarray):
+    def select_action(self, state: State) -> int:
+        context = state.feature
         context = context.reshape(-1, 1)
         ucb_values = []
-        info = {}
 
         ucb_exploitation_values = []
         ucb_exploration_bonuses = []
@@ -169,9 +167,6 @@ class LinUCBAgent(CBAgent):
             ucb_exploitation_values.append(theta.T.dot(context)[0, 0])
             exp_v = self.alpha * np.sqrt(context.T.dot(A_inv).dot(context))
             ucb_exploration_bonuses.append(exp_v[0, 0])
-
-        info["exploration_bonus"] = ucb_exploration_bonuses
-        info["exploitation_value"] = ucb_exploitation_values
 
         # tie-breaking arbitrarily
         candidate_arms = []
@@ -192,34 +187,10 @@ class LinUCBAgent(CBAgent):
         # Choose based on candidate_arms randomly (tie breaker)
         chosen_arm_index = np.random.choice(candidate_arms)
 
-        return chosen_arm_index, info
+        return int(chosen_arm_index)
 
-    def update(
-            self, context: np.ndarray, action: int, reward: float, side_info=None
-    ):
-        del side_info
+    def update(self, state: State, action: int, reward: float) -> None:
+        context = state.feature
         context = context.reshape(-1, 1)
         self.A[action] += context.dot(context.T)
         self.b[action] += reward * context
-
-    def get_info(self, context: np.ndarray):
-        context = context.reshape(-1, 1)
-
-        # info is, given context,the preference for all actions/movies
-        info = {}
-
-        ucb_exploitation_values = []
-        ucb_exploration_bonuses = []
-        for a in range(self.k_arms):
-            A_inv = np.linalg.inv(self.A[a])
-            theta = A_inv.dot(self.b[a])
-
-            exp_v = self.alpha * np.sqrt(context.T.dot(A_inv).dot(context))
-
-            ucb_exploitation_values.append(theta.T.dot(context)[0, 0])
-            ucb_exploration_bonuses.append(exp_v[0, 0])
-
-        info["exploration_bonus"] = ucb_exploration_bonuses
-        info["exploitation_value"] = ucb_exploitation_values
-
-        return info
