@@ -1,6 +1,6 @@
 import os
 from typing import List, Optional
-from banditbench.tasks.utils import dedent
+from banditbench.utils import dedent
 from banditbench.tasks.scenario import BanditScenario, BanditConfig
 
 

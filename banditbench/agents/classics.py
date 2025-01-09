@@ -39,7 +39,7 @@ class UCBAgent(MABAgent):
     """alpha-UCB, where alpha is the exploration bonus coefficient"""
     name: str = "UCB"
 
-    def __init__(self, env: MultiArmedBandit, alpha: float = 2.0) -> None:
+    def __init__(self, env: MultiArmedBandit, alpha: float = 0.5) -> None:
         super().__init__(env)
         self.actions = list(range(self.k_arms))
         self.alpha = alpha

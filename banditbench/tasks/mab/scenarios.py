@@ -1,8 +1,6 @@
 import os
-import numpy as np
-from pydantic import BaseModel
-from typing import Dict, Any, Tuple, Union, List, Callable, Set, Optional
-from banditbench.tasks.utils import dedent
+from typing import Optional
+from banditbench.utils import dedent
 from banditbench.tasks.scenario import BanditScenario, BanditConfig
 
 class MABConfig(BanditConfig):
