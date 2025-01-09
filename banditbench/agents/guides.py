@@ -95,12 +95,10 @@ class UCBGuide(VerbalGuide):
 
     def get_action_guide_info(self, arm: int) -> ActionInfo:
         exploration_bonus = self.agent.calculate_exp_bonus(arm) if self.agent.arms[arm] > 0 else "inf"
-        exp_bonus_guide = ActionInfoField(info_name='exploration_bonus', value=exploration_bonus,
-                                          info_template="exploration bonus: {:.2f}")
+        exp_bonus_guide = ActionInfoField(info_name='exploration bonus', value=exploration_bonus)
 
         exploitation_value = self.agent.calculate_exp_value(arm) if self.agent.arms[arm] > 0 else 0
-        exp_value_guide = ActionInfoField(info_name='exploitation_value', value=exploitation_value,
-                                          info_template="exploitation value: {:.2f}")
+        exp_value_guide = ActionInfoField(info_name='exploitation value', value=exploitation_value)
         return exp_bonus_guide + exp_value_guide
 
 
@@ -117,8 +115,7 @@ class GreedyGuide(VerbalGuide):
 
     def get_action_guide_info(self, arm: int) -> ActionInfo:
         exploitation_value = self.agent.calculate_exp_value(arm) if self.agent.arms[arm] > 0 else 0
-        exp_value_guide = ActionInfoField(info_name='exploitation_value', value=exploitation_value,
-                                          info_template="exploitation value: {:.2f}")
+        exp_value_guide = ActionInfoField(info_name='exploitation value', value=exploitation_value)
         arm_info = ActionInfo(action_info_fields=[exp_value_guide])
         return arm_info
 
@@ -161,10 +158,8 @@ class LinUCBGuide(VerbalGuide):
         exploration_bonus = self.agent.alpha * np.sqrt(context.T.dot(A_inv).dot(context))
         exploitation_value = theta.T.dot(context)[0, 0]
 
-        exp_bonus_guide = ActionInfoField(info_name='exploration_bonus', value=exploration_bonus,
-                                          info_template="exploration bonus: {:.2f}")
-        exp_value_guide = ActionInfoField(info_name='exploitation_value', value=exploitation_value,
-                                          info_template="exploitation value: {:.2f}")
+        exp_bonus_guide = ActionInfoField(info_name='exploration bonus', value=exploration_bonus)
+        exp_value_guide = ActionInfoField(info_name='exploitation value', value=exploitation_value)
 
         return exp_bonus_guide + exp_value_guide
 

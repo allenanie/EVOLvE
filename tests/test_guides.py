@@ -1,10 +1,11 @@
-from banditbench.algorithms.guides import ActionInfoField, UCBGuide, ThompsonSamplingGuide
+from banditbench.agents.guides import ActionInfoField, UCBGuide, ThompsonSamplingGuide
 from banditbench.tasks.mab.env import BernoulliBandit
-from banditbench.algorithms.classics import UCBAgent, ThompsonSamplingAgent
+from banditbench.agents.classics import UCBAgent, ThompsonSamplingAgent
 
 def test_action_info_field():
     print()
-    print(str(ActionInfoField("exploration bonus", "0.003") + ActionInfoField("exploitation value", "0.003")))
+    print(str(ActionInfoField("exploration bonus", 0.003) + ActionInfoField("exploitation value", 0.003)))
+    print(str(ActionInfoField("exploration bonus", "inf") + ActionInfoField("exploitation value", "inf")))
 
 def test_action_info():
     field1 = ActionInfoField("filed 1", 1, "action info=(semantic meaning for field 1={:.2f}")
