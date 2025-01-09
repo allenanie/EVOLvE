@@ -1,21 +1,36 @@
 import math
 import scipy
 import numpy as np
-from banditbench.tasks.mab.env import Bandit, MultiArmedBandit
+from banditbench.tasks.env import Bandit
+from banditbench.tasks.mab.env import MultiArmedBandit
+from banditbench.tasks.cb.env import ContextualBandit
 from banditbench.tasks.cb.env import State
 
 
-class MABAgent:
+class Agent:
     name: str
 
     def __init__(self, env: Bandit) -> None:
         self.k_arms = env.num_arms
+
+
+class MABAgent(Agent):
 
     def act(self) -> int:
         """Same as performing a sampling step."""
         raise NotImplementedError
 
     def update(self, action: int, reward: float) -> None:
+        """The action performs an update step based on the action it chose, and the reward it received."""
+        raise NotImplementedError
+
+
+class CBAgent(Agent):
+    def act(self, state: State) -> int:
+        """Same as performing a sampling step."""
+        raise NotImplementedError
+
+    def update(self, state: State, action: int, reward: float) -> None:
         """The action performs an update step based on the action it chose, and the reward it received."""
         raise NotImplementedError
 
@@ -28,7 +43,6 @@ class UCBAgent(MABAgent):
         super().__init__(env)
         self.actions = list(range(self.k_arms))
         self.alpha = alpha
-        self.k_arms = len(self.actions)
         self.reset()
 
     def reset(self):
@@ -83,7 +97,7 @@ class GreedyAgent(UCBAgent):
     def __init__(self, env: MultiArmedBandit) -> None:
         super().__init__(env)
 
-    def calculate_arm_value(self, arm: int) -> float:
+    def calculate_exp_value(self, arm: int) -> float:
         return self.rewards[arm] / self.arms[arm]
 
 
@@ -110,3 +124,102 @@ class ThompsonSamplingAgent(UCBAgent):
     def update(self, action: int, reward: float) -> None:
         self.alpha[action] += reward
         self.beta[action] += 1 - reward
+
+
+# ======= Contextual Bandit ==========
+
+class LinUCBAgent(CBAgent):
+    name: str = 'LinUCB'
+
+    def __init__(self, d: int, env: ContextualBandit, alpha: float = 0.5):
+        super().__init__(env)
+
+        self.d = d
+        self.alpha = alpha
+
+    def reset(self):
+        # init must be called before reset
+        self.A = [np.identity(self.d) for _ in range(self.k_arms)]
+        self.b = [np.zeros((self.d, 1)) for _ in range(self.k_arms)]
+
+    def act(self, obs: State, get_info=False):
+        action, info = self.select_action(obs)
+        if not get_info:
+            return action
+        else:
+            return action, info
+
+    def select_action(self, context: np.ndarray):
+        context = context.reshape(-1, 1)
+        ucb_values = []
+        info = {}
+
+        ucb_exploitation_values = []
+        ucb_exploration_bonuses = []
+
+        for a in range(self.k_arms):
+            A_inv = np.linalg.inv(self.A[a])
+            theta = A_inv.dot(self.b[a])
+
+            ucb = theta.T.dot(context) + self.alpha * np.sqrt(
+                context.T.dot(A_inv).dot(context)
+            )
+            ucb_values.append(ucb[0, 0])
+
+            ucb_exploitation_values.append(theta.T.dot(context)[0, 0])
+            exp_v = self.alpha * np.sqrt(context.T.dot(A_inv).dot(context))
+            ucb_exploration_bonuses.append(exp_v[0, 0])
+
+        info["exploration_bonus"] = ucb_exploration_bonuses
+        info["exploitation_value"] = ucb_exploitation_values
+
+        # tie-breaking arbitrarily
+        candidate_arms = []
+        highest_ucb = -1
+        for arm_index in range(self.k_arms):
+            # If current arm is highest than current highest_ucb
+            arm_ucb = ucb_values[arm_index]
+            # because we have the precision of 0.01
+            if arm_ucb - highest_ucb > 0.001:
+                # Set new max ucb
+                highest_ucb = arm_ucb
+                # Reset candidate_arms list with new entry based on current arm
+                candidate_arms = [arm_index]
+            # If there is a tie, append to candidate_arms
+            if highest_ucb - arm_ucb <= 1e-5:
+                candidate_arms.append(arm_index)
+
+        # Choose based on candidate_arms randomly (tie breaker)
+        chosen_arm_index = np.random.choice(candidate_arms)
+
+        return chosen_arm_index, info
+
+    def update(
+            self, context: np.ndarray, action: int, reward: float, side_info=None
+    ):
+        del side_info
+        context = context.reshape(-1, 1)
+        self.A[action] += context.dot(context.T)
+        self.b[action] += reward * context
+
+    def get_info(self, context: np.ndarray):
+        context = context.reshape(-1, 1)
+
+        # info is, given context,the preference for all actions/movies
+        info = {}
+
+        ucb_exploitation_values = []
+        ucb_exploration_bonuses = []
+        for a in range(self.k_arms):
+            A_inv = np.linalg.inv(self.A[a])
+            theta = A_inv.dot(self.b[a])
+
+            exp_v = self.alpha * np.sqrt(context.T.dot(A_inv).dot(context))
+
+            ucb_exploitation_values.append(theta.T.dot(context)[0, 0])
+            ucb_exploration_bonuses.append(exp_v[0, 0])
+
+        info["exploration_bonus"] = ucb_exploration_bonuses
+        info["exploitation_value"] = ucb_exploitation_values
+
+        return info

@@ -13,7 +13,7 @@ Info = Union[Dict[str, Any], None]
 
 
 class State(BaseModel):
-    feature: Any  # numpy array
+    feature: Any  # must be numpy array
     index: Union[int, None]  # a pointer to the dataset (if there is a dataset)
     info: Info = None  # additional information
 

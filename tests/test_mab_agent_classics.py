@@ -1,5 +1,5 @@
 from banditbench.tasks.mab.env import BernoulliBandit
-from banditbench.algorithms.classics import UCBAgent, ThompsonSamplingAgent
+from banditbench.agents.classics import UCBAgent, ThompsonSamplingAgent
 
 
 def test_ucb_agent():
