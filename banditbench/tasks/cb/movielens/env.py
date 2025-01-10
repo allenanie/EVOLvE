@@ -6,7 +6,7 @@ import numpy as np
 from typing import Dict, Any, Tuple, Union, List, Optional
 
 from banditbench.tasks.env import Action
-from banditbench.tasks.cb.env import State, Info, Interaction
+from banditbench.tasks.cb.env import State, Info, Interaction, VerbalInteraction
 
 from banditbench.tasks.cb.env import ContextualBandit, VerbalContextualBandit
 from banditbench.tasks.cb.movielens.processing import load_data_files, load_movielens_data, movie_genre_to_text, \
@@ -199,6 +199,10 @@ class MovieLensVerbal(VerbalContextualBandit):
             for row in csvfile:
                 self.zipdata[row['zipcode']] = ("{} of {}".format(row['city'], row['county']), row['state'])
 
+    @property
+    def action_names(self) -> List[str]:
+        return self.bandit_scenario.action_names
+
     def step(self, state: State, action: Action) -> Tuple[State, float, bool, Dict[str, Any]]:
         """action: we expect string here, can be model's raw completion output. We attempt to parse with `action_parsing`."""
 
@@ -214,7 +218,10 @@ class MovieLensVerbal(VerbalContextualBandit):
         text = self.get_user_feat_text(obs.feature, obs.info['user_features'])
         obs.feature = text
 
-        self.history.append(Interaction(state, action, self.core_bandit.reward_fn(state, action_id), is_random))
+        self.history.append(
+            VerbalInteraction(state, action, action_id,
+                              self.action_names[action_id],
+                              self.core_bandit.reward_fn(state, action_id), is_random))
 
         return obs, reward, done, info
 

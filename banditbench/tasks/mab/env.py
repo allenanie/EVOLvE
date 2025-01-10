@@ -19,6 +19,20 @@ class Interaction(BaseModel, InteractionBase):
         super().__init__(action=action, expected_reward=expected_reward, is_random=is_random)
 
 
+class VerbalInteraction(BaseModel, InteractionBase):
+    raw_action: Action
+    mapped_action: Action
+    mapped_action_name: Action
+    expected_reward: ExpectedReward
+    is_random: Union[bool, None] = None
+
+    def __init__(self, raw_action: Action, mapped_action: Action, mapped_action_name: Action,
+                 expected_reward: ExpectedReward, is_random: Union[bool, None] = None) -> None:
+        super().__init__(raw_action=raw_action, mapped_action=mapped_action,
+                         mapped_action_name=mapped_action_name,
+                         expected_reward=expected_reward, is_random=is_random)
+
+
 class MultiArmedBandit(Bandit):
     arm_params: List[BanditArmParam]
     history: List[Interaction]
@@ -136,7 +150,7 @@ class GaussianBandit(MultiArmedBandit):
 
 
 class VerbalMultiArmedBandit(Bandit):
-    history: List[Interaction]
+    history: List[VerbalInteraction]
 
     def __init__(self,
                  core_bandit: MultiArmedBandit,
@@ -206,7 +220,9 @@ class VerbalMultiArmedBandit(Bandit):
         state, reward, done, info = self.core_bandit.step(action_index)
         assert state is None, "State should be None for MultiArmedBandit"
 
-        self.history.append(Interaction(action, self.core_bandit.expected_reward(action_index), is_random))
+        self.history.append(
+            VerbalInteraction(action, action_index, self.action_names[action_index],
+                              self.core_bandit.expected_reward(action_index), is_random))
 
         return None, reward, done, {'is_random': is_random}
 

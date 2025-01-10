@@ -7,11 +7,13 @@ from banditbench.tasks.env import Action, ExpectedReward, Bandit, InteractionBas
 
 Info = Union[Dict[str, Any], None]
 
+
 def safe_json_encode(obj):
     try:
         return json.dumps(obj)
     except:
         return None
+
 
 class State(BaseModel):
     feature: Any  # must be numpy array
@@ -47,6 +49,21 @@ class Interaction(BaseModel, InteractionBase):
     def __init__(self, state: State, action: Action, expected_reward: ExpectedReward,
                  is_random: Union[bool, None] = None) -> None:
         super().__init__(state=state, action=action, expected_reward=expected_reward, is_random=is_random)
+
+
+class VerbalInteraction(BaseModel, InteractionBase):
+    state: State
+    raw_action: Action
+    mapped_action: Action
+    mapped_action_name: Action
+    expected_reward: ExpectedReward
+    is_random: Union[bool, None] = None
+
+    def __init__(self, state: State, raw_action: Action, mapped_action: Action, mapped_action_name: Action,
+                 expected_reward: ExpectedReward, is_random: Union[bool, None] = None) -> None:
+        super().__init__(state=state, raw_action=raw_action, mapped_action=mapped_action,
+                         mapped_action_name=mapped_action_name,
+                         expected_reward=expected_reward, is_random=is_random)
 
 
 class ContextualBandit(Bandit):
@@ -87,7 +104,7 @@ class ContextualBandit(Bandit):
 
 # the step method can be written abstractly (because it just calls core_bandit)
 class VerbalContextualBandit(ContextualBandit):
-    history: List[Interaction]
+    history: List[VerbalInteraction]
 
     def __init__(self, core_bandit, *args, **kwargs):
         self.core_bandit = core_bandit
@@ -97,3 +114,6 @@ class VerbalContextualBandit(ContextualBandit):
         # cb_1m-ratings_arms10
         return self.core_bandit.name
 
+    @property
+    def action_names(self) -> List[str]:
+        raise NotImplementedError
