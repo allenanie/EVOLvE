@@ -89,7 +89,7 @@ class ContextualBandit(Bandit):
     def verbal_info(self) -> Dict[str, Any]:
         """
         CB might be able to provide additional information from the dataset about the state
-        This property is used by the VerbalContextualBandit
+        This property is used by the VerbalBandit
         :return:
         """
         raise NotImplementedError
@@ -99,21 +99,4 @@ class ContextualBandit(Bandit):
         """
         :return: dimension of the contextual feature space
         """
-        raise NotImplementedError
-
-
-# the step method can be written abstractly (because it just calls core_bandit)
-class VerbalContextualBandit(ContextualBandit):
-    history: List[VerbalInteraction]
-
-    def __init__(self, core_bandit, *args, **kwargs):
-        self.core_bandit = core_bandit
-
-    @property
-    def name(self) -> str:
-        # cb_1m-ratings_arms10
-        return self.core_bandit.name
-
-    @property
-    def action_names(self) -> List[str]:
         raise NotImplementedError

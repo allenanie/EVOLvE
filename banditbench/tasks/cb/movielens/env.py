@@ -5,10 +5,10 @@ import numpy as np
 
 from typing import Dict, Any, Tuple, Union, List, Optional
 
-from banditbench.tasks.env import Action
+from banditbench.tasks.env import Action, VerbalBandit
 from banditbench.tasks.cb.env import State, Info, Interaction, VerbalInteraction
 
-from banditbench.tasks.cb.env import ContextualBandit, VerbalContextualBandit
+from banditbench.tasks.cb.env import ContextualBandit
 from banditbench.tasks.cb.movielens.processing import load_data_files, load_movielens_data, movie_genre_to_text, \
     parse_int_list, safe_decode
 from banditbench.tasks.cb.movielens.scenario import MovieLensScenario, CBConfig
@@ -156,29 +156,25 @@ class MovieLens(ContextualBandit):
 
         return obs, reward, done, {}
 
-    def reset(self, ctx_seed=None) -> Tuple[State, Info]:
+    def reset(self, seed: Optional[int] = None) -> Tuple[State, Info]:
         self.avg_rewards = []
         self.actions_taken = []
         self.history = []
         self.h = 0
 
-        if ctx_seed is not None:
+        if seed is not None:
             # ctx_seed decides sampling order
-            self.ctx_seed = ctx_seed
-            self.set_seed(ctx_seed)
+            self.set_seed(seed)
 
         obs = self.sample_state()
 
         return obs, None
 
 
-class MovieLensVerbal(VerbalContextualBandit):
-    def __init__(self,
-                 core_bandit: MovieLens,
-                 # ===== arguments for bandit_scenario_cls =====
-                 instruction_type: str = "detailed",
-                 num_fewshot: int = 0, few_shot_config: Optional[CBConfig] = None
-                 ) -> None:
+class MovieLensVerbal(VerbalBandit):
+    def __init__(self, core_bandit: MovieLens, instruction_type: str = "detailed", num_fewshot: int = 0,
+                 few_shot_config: Optional[CBConfig] = None) -> None:
+        super().__init__(core_bandit)
         self.history = []
         self.core_bandit = core_bandit
         self.instruction_type = instruction_type
@@ -215,15 +211,28 @@ class MovieLensVerbal(VerbalContextualBandit):
             action_id = int(self.core_bandit.np_random.integers(0, self.core_bandit.num_arms))
 
         obs, reward, done, info = self.core_bandit.step(action_id)
-        text = self.get_user_feat_text(obs.feature, obs.info['user_features'])
+        text = self.verbalize_state(obs)
         obs.feature = text
 
-        self.history.append(
-            VerbalInteraction(state, action, action_id,
-                              self.action_names[action_id],
-                              self.core_bandit.reward_fn(state, action_id), is_random))
+        interaction = VerbalInteraction(state, action, action_id,
+                                        self.action_names[action_id],
+                                        self.core_bandit.reward_fn(state, action_id), is_random)
+        self.history.append(interaction)
+
+        info['interaction'] = interaction
+        info['is_random'] = is_random
+        info['feedback'] = self.verbalize_feedback(interaction.mapped_action_name, reward)
 
         return obs, reward, done, info
+
+    def verbalize_state(self, observation: State) -> str:
+        return self.get_user_feat_text(observation.feature, observation.info['user_features'])
+
+    def verbalize_feedback(self, action_name: Action, reward: float) -> str:
+        assert type(action_name) == str, "Action name must be a string"
+        feedback = "{} {}, reward {:.3f}".format(action_name, self.bandit_scenario.action_unit,
+                                                 reward)
+        return feedback
 
     def action_parsing(self, model_completion: str) -> Union[int, None]:
         model_completion = model_completion.strip()
@@ -242,9 +251,9 @@ class MovieLensVerbal(VerbalContextualBandit):
         except:
             return None
 
-    def reset(self, ctx_seed=None) -> Tuple[State, Info]:
+    def reset(self, seed: Optional[int] = None) -> Tuple[State, Info]:
         self.history = []
-        obs, _ = self.core_bandit.reset()
+        obs, _ = self.core_bandit.reset(seed)
         text = self.get_user_feat_text(obs.feature, obs.info['user_features'])
         obs.feature = text
 

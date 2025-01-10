@@ -3,7 +3,7 @@ from typing import Dict, Any, Tuple, Union, List, Optional
 import numpy as np
 from banditbench.tasks.scenario import BanditScenario
 from banditbench.tasks.mab.scenarios import ButtonPushing, OnlineAds, VideoWatching, ClothesShopping, MABConfig
-from banditbench.tasks.env import Action, ExpectedReward, Bandit, InteractionBase
+from banditbench.tasks.env import Action, ExpectedReward, Bandit, InteractionBase, VerbalBandit
 
 BernArmParam = float
 GaussianArmParam = Tuple[float, float]
@@ -39,7 +39,10 @@ class MultiArmedBandit(Bandit):
     instance_hardness: float  # this is the Delta_min or "gap" in the paper
 
     def __init__(self, num_arms: int, horizon: int, arm_params: List[BanditArmParam], seed: Optional[int] = None,
-                 instance_hardness: float = 0.0) -> None:
+                 instance_hardness: float = 0.0, shuffle_at_reset=False) -> None:
+        """
+        :param shuffle_at_reset: Setting this will shuffle the underlying arm param distribution at each reset.
+        """
         self.num_arms = num_arms
         self.horizon = horizon
         self.arm_params = arm_params
@@ -49,6 +52,7 @@ class MultiArmedBandit(Bandit):
         if seed is not None:
             self.shuffle_arms()
         self.initialize_defaults()
+        self.shuffle_at_reset = shuffle_at_reset
 
     def initialize_defaults(self) -> None:
         """Initialize default values for type-annotated attributes, but are instance variables"""
@@ -87,9 +91,13 @@ class MultiArmedBandit(Bandit):
 
         return None, reward, done, info
 
-    def reset(self) -> None:
+    def reset(self, seed: Optional[int] = None) -> None:
         self.history = []
         self.h = 0
+        if self.shuffle_at_reset:
+            if seed is not None:
+                self.set_seed(seed)
+            self.shuffle_arms()
 
 
 class BernoulliBandit(MultiArmedBandit):
@@ -149,7 +157,7 @@ class GaussianBandit(MultiArmedBandit):
         return f"g_arms{self.num_arms}_difficulty_{self.instance_hardness:.2f}"
 
 
-class VerbalMultiArmedBandit(Bandit):
+class VerbalMultiArmedBandit(VerbalBandit):
     history: List[VerbalInteraction]
 
     def __init__(self,
@@ -190,8 +198,8 @@ class VerbalMultiArmedBandit(Bandit):
     def initialize_defaults(self) -> None:
         self.history = []
 
-    def reset(self) -> Any:
-        self.core_bandit.reset()
+    def reset(self, seed: Optional[int] = None) -> Any:
+        self.core_bandit.reset(seed)
         verbal_instruction = self.bandit_scenario.get_instruction(self.instruction_type)
         return None, {'instruction': verbal_instruction}
 
@@ -201,12 +209,11 @@ class VerbalMultiArmedBandit(Bandit):
 
     def step(self, action: str) -> Tuple[None, float, bool, Dict[str, Any]]:
         """
-        action: the action selected by the agent, a string of the actual action name
-
-        For MAB's VerbalState, we return instruction/problem instance, it's fixed for all steps
+        For Verbal environment, reward (numerical) also gets verbalized into feedback (text)
         """
         assert type(action) == str, "Action must be a string for VerbalBandit"
         # Find matching action name, accounting for case and whitespace
+        raw_action = action
         action = action.strip().lower()
         action_names = [name.strip().lower() for name in self.bandit_scenario.action_names]
         try:
@@ -220,11 +227,22 @@ class VerbalMultiArmedBandit(Bandit):
         state, reward, done, info = self.core_bandit.step(action_index)
         assert state is None, "State should be None for MultiArmedBandit"
 
-        self.history.append(
-            VerbalInteraction(action, action_index, self.action_names[action_index],
-                              self.core_bandit.expected_reward(action_index), is_random))
+        interaction = VerbalInteraction(raw_action, action_index, self.action_names[action_index],
+                                        self.core_bandit.expected_reward(action_index), is_random)
+        self.history.append(interaction)
 
-        return None, reward, done, {'is_random': is_random}
+        info['interaction'] = interaction
+        info['is_random'] = is_random
+        info['feedback'] = self.verbalize_feedback(interaction.mapped_action_name, reward)
+
+        return None, reward, done, info
+
+    def verbalize_feedback(self, action_name: Action, reward: float) -> str:
+        # :.3f
+        assert type(action_name) == str, "Action name must be a string"
+        feedback = "{} {}, reward {}".format(action_name, self.bandit_scenario.action_unit,
+                                                                               reward)
+        return feedback
 
     @property
     def name(self) -> str:
