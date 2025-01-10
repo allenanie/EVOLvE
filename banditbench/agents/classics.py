@@ -131,10 +131,10 @@ class ThompsonSamplingAgent(UCBAgent):
 class LinUCBAgent(CBAgent):
     name: str = 'LinUCB'
 
-    def __init__(self, d: int, env: ContextualBandit, alpha: float = 0.5):
+    def __init__(self, env: ContextualBandit, alpha: float = 0.5):
         super().__init__(env)
 
-        self.d = d
+        self.d = env.feature_dim
         self.alpha = alpha
 
     def reset(self):

@@ -61,6 +61,10 @@ class MovieLens(ContextualBandit):
             'movie_genre_to_text': movie_genre_to_text
         }
 
+    @property
+    def feature_dim(self) -> int:
+        return min(self.rank_k, self.num_arms)
+
     def initialize_defaults(self) -> None:
         """Note this is not a reset function. It loads necessary files and processes them."""
 
@@ -75,7 +79,6 @@ class MovieLens(ContextualBandit):
 
         self._num_users, self._num_movies = self._data_matrix.shape
         self.n_actions = self._num_movies
-        self.d = self.rank_k
 
         # Compute the SVD.
         u, s, vh = np.linalg.svd(self._data_matrix, full_matrices=False)
@@ -161,6 +164,7 @@ class MovieLens(ContextualBandit):
         obs = self.sample_state()
 
         return obs, None
+
 
 class MovieLensVerbal(VerbalContextualBandit):
     def __init__(self,

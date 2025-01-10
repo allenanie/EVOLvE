@@ -51,6 +51,13 @@ class ContextualBandit(Bandit):
         """
         raise NotImplementedError
 
+    @property
+    def feature_dim(self) -> int:
+        """
+        :return: dimension of the contextual feature space
+        """
+        raise NotImplementedError
+
 
 # the step method can be written abstractly (because it just calls core_bandit)
 class VerbalContextualBandit(ContextualBandit):
