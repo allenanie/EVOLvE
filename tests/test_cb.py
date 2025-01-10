@@ -1,9 +1,13 @@
-from banditbench.tasks.cb.movielens import MovieLens, MovieLensVerbal
+import numpy as np
+from banditbench.tasks.cb import State
 
-def test_construct_env():
-    env = MovieLens('100k-ratings', 5, 20, 5, 'train', save_data_dir='/piech/u/anie/tensorflow_datasets/')
-    state, _ = env.reset()
-    verbal_env = MovieLensVerbal(env)
-    verbal_state, info = verbal_env.reset()
+def test_save_state():
+    print()
+    s = State(feature=[1, 2, 3], index=1, info=None)
+    print(s.model_dump_json())
+    s = State(feature=np.array([1, 2, 3]), index=1, info={'field1': 1})
+    print(s.model_dump_json())
+    s = State(feature=np.int32(3), index=1, info={'field1': np.array([1,2,3])})
+    print(s.model_dump_json())
 
-test_construct_env()
+test_save_state()

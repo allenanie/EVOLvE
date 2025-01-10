@@ -30,7 +30,7 @@ class ActionInfoField(BaseModel):
         if isinstance(other, ActionInfoField):
             return ActionInfo(action_info_fields=[self, other])
         elif isinstance(other, ActionInfo):
-            return ActionInfo(action_info_fields=self.action_infos + other.action_infos)
+            return ActionInfo(action_info_fields=[self] + other.action_info_fields)
         else:
             raise ValueError(f"Unsupported type: {type(other)}")
 

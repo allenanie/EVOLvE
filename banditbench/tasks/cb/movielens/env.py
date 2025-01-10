@@ -5,7 +5,7 @@ import numpy as np
 from typing import Dict, Any, Tuple, Union, List, Optional
 
 from banditbench.tasks.env import Action
-from banditbench.tasks.cb.env import State, Info
+from banditbench.tasks.cb.env import State, Info, Interaction
 
 from banditbench.tasks.cb.env import ContextualBandit, VerbalContextualBandit
 from banditbench.tasks.cb.movielens.processing import load_data_files, load_movielens_data, movie_genre_to_text, \
@@ -147,6 +147,8 @@ class MovieLens(ContextualBandit):
         self.actions_taken.append(action)
         self.avg_rewards.append(reward)
 
+        self.history.append(Interaction(state, action, reward))
+
         obs = self.sample_state()
 
         return obs, reward, done, {}
@@ -154,6 +156,7 @@ class MovieLens(ContextualBandit):
     def reset(self, ctx_seed=None) -> Tuple[State, Info]:
         self.avg_rewards = []
         self.actions_taken = []
+        self.history = []
         self.h = 0
 
         if ctx_seed is not None:

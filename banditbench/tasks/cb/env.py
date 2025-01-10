@@ -1,18 +1,44 @@
-from pydantic import BaseModel
-from typing import Dict, Any, Tuple, Union, List, Optional
+import json
+import numpy as np
+from pydantic import BaseModel, field_serializer
+from typing import Dict, Any, Tuple, Union, List, Optional, Annotated
 
-from banditbench.tasks.env import Action, ExpectedReward, Bandit
+from banditbench.tasks.env import Action, ExpectedReward, Bandit, InteractionBase
 
 Info = Union[Dict[str, Any], None]
 
+def safe_json_encode(obj):
+    try:
+        return json.dumps(obj)
+    except:
+        return None
 
 class State(BaseModel):
     feature: Any  # must be numpy array
     index: Union[int, None]  # a pointer to the dataset (if there is a dataset)
     info: Info = None  # additional information
 
+    @field_serializer('info')
+    def serialize_info(self, info: Info, _info):
+        """
+        When info cannot be serialized, we return None to avoid triggering error
+        """
+        return safe_json_encode(info)
 
-class Interaction(BaseModel):
+    @field_serializer('feature')
+    def serialize_feature(self, feature: Any, _feature):
+        """
+        We perform an automatic numpy serialization
+        """
+        if type(feature) == np.ndarray:
+            return feature.tolist()
+        elif type(feature).__module__ == np.__name__:
+            # this is a Numpy integer or float, i.e., np.int32
+            return feature.item()
+        return feature
+
+
+class Interaction(BaseModel, InteractionBase):
     state: State
     action: Action
     expected_reward: ExpectedReward

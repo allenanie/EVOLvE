@@ -3,14 +3,14 @@ from typing import Dict, Any, Tuple, Union, List, Optional
 import numpy as np
 from banditbench.tasks.scenario import BanditScenario
 from banditbench.tasks.mab.scenarios import ButtonPushing, OnlineAds, VideoWatching, ClothesShopping, MABConfig
-from banditbench.tasks.env import Action, ExpectedReward, Bandit
+from banditbench.tasks.env import Action, ExpectedReward, Bandit, InteractionBase
 
 BernArmParam = float
 GaussianArmParam = Tuple[float, float]
 BanditArmParam = Union[BernArmParam, GaussianArmParam]
 
 
-class Interaction(BaseModel):
+class Interaction(BaseModel, InteractionBase):
     action: Action
     expected_reward: ExpectedReward
     is_random: Union[bool, None] = None

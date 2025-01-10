@@ -1,6 +1,6 @@
 import numpy as np
 from banditbench.tasks.mab.env import Interaction
-from banditbench.tasks.mab.env import BernoulliBandit, GaussianBandit
+from banditbench.tasks.mab.env import BernoulliBandit, GaussianBandit, VerbalMultiArmedBandit
 
 
 def create_small_gap_bernoulli_bandit(num_arms, horizon, seed=None):
