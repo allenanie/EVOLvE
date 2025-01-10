@@ -188,7 +188,7 @@ class MovieLensVerbal(VerbalBandit):
     def initialize_defaults(self) -> None:
         # https://github.com/scpike/us-state-county-zip/tree/master
         # load in csv "geo-data.csv" data from the data directory
-        data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'movielens', 'data')
+        data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
         self.zipdata = {}
         with open(os.path.join(data_dir, 'geo-data.csv')) as f:
             csvfile = csv.DictReader(f)
@@ -259,7 +259,14 @@ class MovieLensVerbal(VerbalBandit):
 
         verbal_instruction = self.bandit_scenario.get_instruction(self.instruction_type)
 
-        return obs, {'instruction': verbal_instruction}
+        return obs, {'instruction': verbal_instruction, 'query': self.get_query_prompt(obs)}
+
+    def get_query_prompt(self, state: State, side_info: Optional[str] = None) -> str:
+        return self.bandit_scenario.get_query_prompt(state, side_info)
+
+    def get_task_instruction(self, *args, **kwargs) -> str:
+        verbal_instruction = self.bandit_scenario.get_instruction(self.instruction_type)
+        return verbal_instruction
 
     def get_actions_text(self, genre=True):
         """

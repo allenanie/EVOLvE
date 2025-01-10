@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Dict, Any, Tuple, Union, List, Optional
 import numpy as np
-from banditbench.tasks.scenario import BanditScenario
+from banditbench.tasks.scenario import MABScenario
 from banditbench.tasks.mab.scenarios import ButtonPushing, OnlineAds, VideoWatching, ClothesShopping, MABConfig
 from banditbench.tasks.env import Action, ExpectedReward, Bandit, InteractionBase, VerbalBandit
 
@@ -162,7 +162,7 @@ class VerbalMultiArmedBandit(VerbalBandit):
 
     def __init__(self,
                  core_bandit: MultiArmedBandit,
-                 bandit_scenario: Union[str, BanditScenario, type],
+                 bandit_scenario: Union[str, MABScenario, type],
                  # ===== arguments for bandit_scenario_cls =====
                  scenario_seed: Optional[int] = None,
                  instruction_type: str = "detailed",
@@ -190,7 +190,7 @@ class VerbalMultiArmedBandit(VerbalBandit):
                                                    num_fewshot=num_fewshot,
                                                    few_shot_config=few_shot_config,
                                                    seed=scenario_seed)
-        elif isinstance(bandit_scenario, BanditScenario):
+        elif isinstance(bandit_scenario, MABScenario):
             self.bandit_scenario = bandit_scenario
         else:
             raise ValueError("Unknown bandit scenario")
@@ -201,7 +201,15 @@ class VerbalMultiArmedBandit(VerbalBandit):
     def reset(self, seed: Optional[int] = None) -> Any:
         self.core_bandit.reset(seed)
         verbal_instruction = self.bandit_scenario.get_instruction(self.instruction_type)
-        return None, {'instruction': verbal_instruction}
+        return None, {'instruction': verbal_instruction,
+                      'query': self.get_query_prompt()}
+
+    def get_query_prompt(self, *args, **kwargs) -> str:
+        return self.bandit_scenario.get_query_prompt()
+
+    def get_task_instruction(self, *args, **kwargs) -> str:
+        verbal_instruction = self.bandit_scenario.get_instruction(self.instruction_type)
+        return verbal_instruction
 
     @property
     def action_names(self) -> List[str]:

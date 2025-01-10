@@ -1,7 +1,7 @@
 import os
 from typing import Optional
 from banditbench.utils import dedent
-from banditbench.tasks.scenario import BanditScenario, BanditConfig
+from banditbench.tasks.scenario import MABScenario, BanditConfig
 
 class MABConfig(BanditConfig):
     bandit_type: str
@@ -23,10 +23,11 @@ class ScenarioUtil:
                  num_fewshot: int = 0, few_shot_config: Optional[MABConfig] = None,
                  seed: Optional[int] = None):
         super().__init__(num_actions=num_actions, action_names=self.action_names, action_unit=self.action_unit, 
-                         base_description=self.base_description, detailed_description=self.detailed_description, 
+                         base_description=self.base_description, detailed_description=self.detailed_description,
+                         query_prompt=self.query_prompt,
                          num_fewshot=num_fewshot, few_shot_config=few_shot_config, seed=seed)
 
-class ButtonPushing(ScenarioUtil, BanditScenario):
+class ButtonPushing(ScenarioUtil, MABScenario):
   name = 'btn'
   
   # 100 actions
@@ -153,7 +154,7 @@ class ButtonPushing(ScenarioUtil, BanditScenario):
                 """
   )
 
-class OnlineAds(ScenarioUtil, BanditScenario):
+class OnlineAds(ScenarioUtil, MABScenario):
   name = 'ads'  
 
   action_names = [
@@ -288,7 +289,7 @@ class OnlineAds(ScenarioUtil, BanditScenario):
   )
 
 
-class VideoWatching(ScenarioUtil, BanditScenario):
+class VideoWatching(ScenarioUtil, MABScenario):
   name = 'vid'
   action_names = [
       "A",
@@ -421,7 +422,7 @@ class VideoWatching(ScenarioUtil, BanditScenario):
     """
   )
 
-class ClothesShopping(ScenarioUtil, BanditScenario):
+class ClothesShopping(ScenarioUtil, MABScenario):
   name = 'clothes'
   
   action_names = [

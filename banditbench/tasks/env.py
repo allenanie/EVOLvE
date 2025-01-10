@@ -44,6 +44,12 @@ class VerbalBandit(Bandit):
     def action_names(self) -> List[str]:
         raise NotImplementedError
 
+    def get_query_prompt(self, *args, **kwargs) -> str:
+        raise NotImplementedError
+
+    def get_task_instruction(self, *args, **kwargs) -> str:
+        raise NotImplementedError
+
 
 # this is for serialization and for string translation
 class Trajectory(list):

@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Union, List, Optional
+from banditbench.tasks.cb.env import State
 
 
 class BanditConfig:
@@ -19,6 +20,8 @@ class BanditScenario:
 
     base_description: str
     detailed_description: str
+    query_prompt: str = ("\n\nWhich {unit} will you choose next? PLEASE RESPOND ONLY WITH {choices} AND NO TEXT "
+                         "EXPLANATION.")
 
     num_fewshot: int
     fewshot_examples: str
@@ -27,6 +30,7 @@ class BanditScenario:
     def __init__(self, num_actions: int,
                  action_names: List[str], action_unit: str,
                  base_description: str, detailed_description: str,
+                 query_prompt: str,
                  seed: Union[int, None] = None,
                  num_fewshot: int = 0, few_shot_config: Optional[BanditConfig] = None):
 
@@ -34,6 +38,7 @@ class BanditScenario:
         self.action_unit = action_unit
         self.base_description = base_description
         self.detailed_description = detailed_description
+        self.query_prompt = query_prompt
         self.num_fewshot = num_fewshot
         self.few_shot_config = few_shot_config
         self.initialize_defaults()
@@ -56,6 +61,16 @@ class BanditScenario:
         self.seed = seed
         self.np_random = np.random.default_rng(self.seed)
 
+    def get_instruction(self, version="base") -> str:
+        raise NotImplementedError
+
+    def load_fewshot_examples(self) -> str:
+        """Few-shot examples have their own configuration such as the number of arms, difficulty, scenario, etc."""
+        # reminder: you need to implement this later
+        raise NotImplementedError
+
+
+class MABScenario(BanditScenario):
     def get_instruction(self, version="base"):
         """We add the few-shot examples in here"""
         if version == "base":
@@ -74,7 +89,12 @@ class BanditScenario:
 
         return prompt
 
-    def load_fewshot_examples(self):
-        """Few-shot examples have their own configuration such as the number of arms, difficulty, scenario, etc."""
-        # reminder: you need to implement this later
+    def get_query_prompt(self) -> str:
+        prompt = self.query_prompt.format(unit=self.action_unit, choices="[" + ", ".join(self.action_names) + "]")
+        return prompt
+
+
+class CBScenario(BanditScenario):
+    def get_query_prompt(self, state: State, side_info: Optional[str] = None) -> str:
+        """For contextual bandit, the agent can pass in optional side_info to the decision query context"""
         raise NotImplementedError
