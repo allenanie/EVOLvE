@@ -1,4 +1,5 @@
 import os
+import re
 import csv
 import numpy as np
 
@@ -137,6 +138,8 @@ class MovieLens(ContextualBandit):
 
     def step(self, state: State, action: Action):
         """Core step function that takes integer action and returns vector observation"""
+        assert type(action) == int, "For contextual bandit, the action space is integer"
+
         self.h += 1
         if self.h < self.horizon:
             done = False
@@ -176,6 +179,7 @@ class MovieLensVerbal(VerbalContextualBandit):
                  instruction_type: str = "detailed",
                  num_fewshot: int = 0, few_shot_config: Optional[CBConfig] = None
                  ) -> None:
+        self.history = []
         self.core_bandit = core_bandit
         self.instruction_type = instruction_type
         self.bandit_scenario = MovieLensScenario(action_names=self.get_actions_text(),
@@ -196,23 +200,43 @@ class MovieLensVerbal(VerbalContextualBandit):
                 self.zipdata[row['zipcode']] = ("{} of {}".format(row['city'], row['county']), row['state'])
 
     def step(self, state: State, action: Action) -> Tuple[State, float, bool, Dict[str, Any]]:
-        """Step function that handles string/int actions and text observations"""
+        """action: we expect string here, can be model's raw completion output. We attempt to parse with `action_parsing`."""
 
-        # can add action validation here (instead of taking in a number)
-        assert action in [
-            str(i) for i in range(self.core_bandit.num_arms)
-        ], f'Action {action} is not in the action space.'
+        # VerbalBandit takes in an action that's a string, which is the action name
+        assert type(action) == str, "Action must be a string for VerbalBandit"
 
-        action_id = int(action)
+        action_id = self.action_parsing(action)
+        is_random = False if action_id is not None else True
+        if action_id is None:
+            action_id = int(self.core_bandit.np_random.integers(0, self.core_bandit.num_arms))
 
         obs, reward, done, info = self.core_bandit.step(action_id)
         text = self.get_user_feat_text(obs.feature, obs.info['user_features'])
         obs.feature = text
 
+        self.history.append(Interaction(state, action, self.core_bandit.reward_fn(state, action_id), is_random))
+
         return obs, reward, done, info
 
-    def reset(self, ctx_seed=None) -> Tuple[State, Info]:
+    def action_parsing(self, model_completion: str) -> Union[int, None]:
+        model_completion = model_completion.strip()
+        query_parts = model_completion.split("(")
+        try:
+            title = query_parts[0].strip()
+            year = query_parts[1].split(")")[0].strip()
 
+            # Create a regex pattern to match the query
+            pattern = rf"^{re.escape(title)}\s*\({re.escape(year)}\)"
+
+            movie_list = self.prompt_info.options[: self.k_arms]
+            for index, movie in enumerate(movie_list):
+                if re.match(pattern, movie):
+                    return index
+        except:
+            return None
+
+    def reset(self, ctx_seed=None) -> Tuple[State, Info]:
+        self.history = []
         obs, _ = self.core_bandit.reset()
         text = self.get_user_feat_text(obs.feature, obs.info['user_features'])
         obs.feature = text

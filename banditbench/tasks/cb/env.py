@@ -87,6 +87,8 @@ class ContextualBandit(Bandit):
 
 # the step method can be written abstractly (because it just calls core_bandit)
 class VerbalContextualBandit(ContextualBandit):
+    history: List[Interaction]
+
     def __init__(self, core_bandit, *args, **kwargs):
         self.core_bandit = core_bandit
 
