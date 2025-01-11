@@ -16,7 +16,7 @@ class Bandit:
     def initialize_defaults(self) -> None:
         raise NotImplementedError
 
-    def reset(self, seed: Optional[int]=None) -> Tuple[None, Dict[str, Any]]:
+    def reset(self, seed: Optional[int] = None) -> Tuple[None, Dict[str, Any]]:
         raise NotImplementedError
 
     def set_seed(self, seed: Optional[int] = None) -> None:
@@ -28,10 +28,15 @@ class Bandit:
         # b_vid_arms5_easy
         raise NotImplementedError
 
+
 class VerbalBandit(Bandit):
 
     def __init__(self, core_bandit, *args, **kwargs):
         self.core_bandit = core_bandit
+        self.num_arms = self.core_bandit.num_arms
+        self.horizon = self.core_bandit.horizon
+        self.seed = self.core_bandit.seed
+        self.h = self.core_bandit.h
 
     def verbalize_feedback(self, action_name: Action, reward: float) -> str:
         """This corresponds to raw / unprocessed feedback from the environment"""
@@ -82,6 +87,7 @@ class Trajectory(list):
 
     def model_dump_json(self, **kwargs) -> str:
         return json.dumps(self.model_dump(**kwargs))
+
 
 class InteractionBase:
     def __add__(self, other: Union['InteractionBase', 'Trajectory']) -> Trajectory:

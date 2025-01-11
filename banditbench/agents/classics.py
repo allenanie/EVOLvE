@@ -1,16 +1,18 @@
 import math
 import scipy
 import numpy as np
-from banditbench.tasks.env import Bandit
+from banditbench.tasks.env import Bandit, VerbalBandit
 from banditbench.tasks.mab.env import MultiArmedBandit
 from banditbench.tasks.cb.env import ContextualBandit
 from banditbench.tasks.cb.env import State
 
+from typing import Union
 
 class Agent:
     name: str
 
-    def __init__(self, env: Bandit) -> None:
+    def __init__(self, env: Union[Bandit, VerbalBandit]) -> None:
+        self.env = env
         self.k_arms = env.num_arms
 
 
