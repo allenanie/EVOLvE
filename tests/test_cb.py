@@ -1,5 +1,5 @@
 import numpy as np
-from banditbench.tasks.cb import State
+from banditbench.tasks.typing import State
 
 def test_save_state():
     print()
@@ -11,3 +11,7 @@ def test_save_state():
     print(s.model_dump_json())
 
 test_save_state()
+
+
+def test_verbal_mapping():
+    print()

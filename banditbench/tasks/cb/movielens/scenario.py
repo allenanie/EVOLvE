@@ -1,7 +1,7 @@
 import os
 from typing import List, Optional
 
-from banditbench.tasks.cb import State
+from banditbench.tasks.typing import State
 from banditbench.utils import dedent
 from banditbench.tasks.scenario import CBScenario, BanditConfig
 
@@ -64,7 +64,7 @@ class MovieLensScenario(ScenarioUtil, CBScenario):
         """
     )
 
-    query_prompt = ("\nYou have a new user: PLEASE"
+    query_prompt = ("\n\nYou have a new user: PLEASE"
                   " RESPOND ONLY WITH A CHOICE of MOVIES LISTED ABOVE AND NO TEXT"
                   " EXPLANATION.\n\nContext: {feature}\n")
 

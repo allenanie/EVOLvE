@@ -1,17 +1,15 @@
 from typing import Dict, Any, Tuple, Union, List, Optional
 import json
 import numpy as np
-from pydantic import BaseModel
-
-Action = Union[int, str]
-ExpectedReward = float
+from banditbench.tasks.scenario import BanditScenario
+from banditbench.tasks.typing import Action
 
 
 class Bandit:
     num_arms: int
     horizon: int
     seed: Optional[int]
-    h: int
+    h: int  # number of interactions
 
     def initialize_defaults(self) -> None:
         raise NotImplementedError
@@ -30,6 +28,7 @@ class Bandit:
 
 
 class VerbalBandit(Bandit):
+    bandit_scenario: BanditScenario
 
     def __init__(self, core_bandit, *args, **kwargs):
         self.core_bandit = core_bandit
@@ -57,43 +56,3 @@ class VerbalBandit(Bandit):
 
 
 # this is for serialization and for string translation
-class Trajectory(list):
-    def __init__(self, interactions: Union[List['InteractionBase'], None] = None) -> None:
-        super().__init__(interactions or [])
-
-    def __add__(self, other: Union['InteractionBase', 'Trajectory']):
-        if isinstance(other, InteractionBase):
-            return Trajectory(list(self) + [other])
-        elif isinstance(other, Trajectory):
-            return Trajectory(list(self) + list(other))
-        else:
-            raise ValueError(f"Unsupported type: {type(other)}")
-
-    def __getstate__(self):
-        return list(self)
-
-    def __setstate__(self, state):
-        super().__init__(state)
-
-    def __repr__(self) -> str:
-        return f"Trajectory({super().__repr__()})"
-
-    def model_dump(self, **kwargs) -> List[Dict[str, Any]]:
-        return [
-            item.model_dump(**kwargs) if hasattr(item, 'model_dump')
-            else item.__dict__
-            for item in self
-        ]
-
-    def model_dump_json(self, **kwargs) -> str:
-        return json.dumps(self.model_dump(**kwargs))
-
-
-class InteractionBase:
-    def __add__(self, other: Union['InteractionBase', 'Trajectory']) -> Trajectory:
-        if isinstance(other, InteractionBase):
-            return Trajectory(interactions=[self, other])
-        elif isinstance(other, Trajectory):
-            return Trajectory(interactions=[self] + other.interactions)
-        else:
-            raise ValueError(f"Unsupported type: {type(other)}")

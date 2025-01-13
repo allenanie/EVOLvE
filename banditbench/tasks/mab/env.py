@@ -3,7 +3,8 @@ from typing import Dict, Any, Tuple, Union, List, Optional
 import numpy as np
 from banditbench.tasks.scenario import MABScenario
 from banditbench.tasks.mab.scenarios import ButtonPushing, OnlineAds, VideoWatching, ClothesShopping, MABConfig
-from banditbench.tasks.env import Action, ExpectedReward, Bandit, InteractionBase, VerbalBandit
+from banditbench.tasks.typing import Action, ExpectedReward, InteractionBase
+from banditbench.tasks.env import Bandit, VerbalBandit
 
 BernArmParam = float
 GaussianArmParam = Tuple[float, float]
@@ -12,25 +13,32 @@ BanditArmParam = Union[BernArmParam, GaussianArmParam]
 
 class Interaction(BaseModel, InteractionBase):
     action: Action
-    expected_reward: ExpectedReward
+    reward: float  # observed reward
+    expected_reward: ExpectedReward  # this information is hidden from the agent
     is_random: Union[bool, None] = None
 
-    def __init__(self, action: Action, expected_reward: ExpectedReward, is_random: Union[bool, None] = None) -> None:
-        super().__init__(action=action, expected_reward=expected_reward, is_random=is_random)
+    def __init__(self, action: Action, reward: float,
+                 expected_reward: ExpectedReward, is_random: Union[bool, None] = None) -> None:
+        super().__init__(action=action, reward=reward,
+                         expected_reward=expected_reward, is_random=is_random)
 
 
 class VerbalInteraction(BaseModel, InteractionBase):
     raw_action: Action
     mapped_action: Action
     mapped_action_name: Action
+    reward: float
     expected_reward: ExpectedReward
+    feedback: str
     is_random: Union[bool, None] = None
 
     def __init__(self, raw_action: Action, mapped_action: Action, mapped_action_name: Action,
-                 expected_reward: ExpectedReward, is_random: Union[bool, None] = None) -> None:
+                 reward: float, expected_reward: ExpectedReward, feedback: str,
+                 is_random: Union[bool, None] = None) -> None:
         super().__init__(raw_action=raw_action, mapped_action=mapped_action,
                          mapped_action_name=mapped_action_name,
-                         expected_reward=expected_reward, is_random=is_random)
+                         reward=reward, expected_reward=expected_reward, feedback=feedback,
+                         is_random=is_random)
 
 
 class MultiArmedBandit(Bandit):
@@ -87,7 +95,7 @@ class MultiArmedBandit(Bandit):
         self.h += 1
         done = self.h == self.horizon
         reward = self.reward_fn(action)
-        self.history.append(Interaction(action, self.expected_reward(action)))
+        self.history.append(Interaction(action, reward, self.expected_reward(action)))
 
         return None, reward, done, info
 
@@ -235,13 +243,15 @@ class VerbalMultiArmedBandit(VerbalBandit):
         state, reward, done, info = self.core_bandit.step(action_index)
         assert state is None, "State should be None for MultiArmedBandit"
 
+        feedback = self.verbalize_feedback(self.action_names[action_index], reward)
+
         interaction = VerbalInteraction(raw_action, action_index, self.action_names[action_index],
-                                        self.core_bandit.expected_reward(action_index), is_random)
+                                        reward, self.core_bandit.expected_reward(action_index),
+                                        feedback, is_random)
         self.history.append(interaction)
 
         info['interaction'] = interaction
         info['is_random'] = is_random
-        info['feedback'] = self.verbalize_feedback(interaction.mapped_action_name, reward)
 
         return None, reward, done, info
 
@@ -249,7 +259,7 @@ class VerbalMultiArmedBandit(VerbalBandit):
         # :.3f
         assert type(action_name) == str, "Action name must be a string"
         feedback = "{} {}, reward {}".format(action_name, self.bandit_scenario.action_unit,
-                                                                               reward)
+                                             reward)
         return feedback
 
     @property

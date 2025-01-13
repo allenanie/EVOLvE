@@ -6,7 +6,7 @@ from banditbench.tasks.mab.env import MultiArmedBandit
 from banditbench.tasks.cb.env import ContextualBandit
 from banditbench.tasks.cb.env import State
 
-from typing import Union
+from typing import Union, Dict, Any
 
 class Agent:
     name: str
@@ -22,7 +22,7 @@ class MABAgent(Agent):
         """Same as performing a sampling step."""
         raise NotImplementedError
 
-    def update(self, action: int, reward: float) -> None:
+    def update(self, action: int, reward: float, info: Dict[str, Any]) -> None:
         """The action performs an update step based on the action it chose, and the reward it received."""
         raise NotImplementedError
 
@@ -32,7 +32,7 @@ class CBAgent(Agent):
         """Same as performing a sampling step."""
         raise NotImplementedError
 
-    def update(self, state: State, action: int, reward: float) -> None:
+    def update(self, state: State, action: int, reward: float, info: Dict[str, Any]) -> None:
         """The action performs an update step based on the action it chose, and the reward it received."""
         raise NotImplementedError
 
@@ -85,7 +85,7 @@ class UCBAgent(MABAgent):
     def act(self) -> int:
         return self.select_arm()
 
-    def update(self, action: int, reward: float) -> None:
+    def update(self, action: int, reward: float, info: Dict[str, Any]) -> None:
         self.arms[action] += 1
         self.rewards[action] += reward
 
@@ -123,7 +123,7 @@ class ThompsonSamplingAgent(UCBAgent):
         ]
         return int(np.argmax(samples))
 
-    def update(self, action: int, reward: float) -> None:
+    def update(self, action: int, reward: float, info: Dict[str, Any]) -> None:
         self.alpha[action] += reward
         self.beta[action] += 1 - reward
 
@@ -191,7 +191,7 @@ class LinUCBAgent(CBAgent):
 
         return int(chosen_arm_index)
 
-    def update(self, state: State, action: int, reward: float) -> None:
+    def update(self, state: State, action: int, reward: float, info: Dict[str, Any]) -> None:
         context = state.feature
         context = context.reshape(-1, 1)
         self.A[action] += context.dot(context.T)

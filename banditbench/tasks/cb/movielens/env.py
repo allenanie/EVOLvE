@@ -5,8 +5,9 @@ import numpy as np
 
 from typing import Dict, Any, Tuple, Union, List, Optional
 
-from banditbench.tasks.env import Action, VerbalBandit
-from banditbench.tasks.cb.env import State, Info, Interaction, VerbalInteraction
+from banditbench.tasks.typing import Action, State, Info
+from banditbench.tasks.env import VerbalBandit
+from banditbench.tasks.cb.env import Interaction, VerbalInteraction
 
 from banditbench.tasks.cb.env import ContextualBandit
 from banditbench.tasks.cb.movielens.processing import load_data_files, load_movielens_data, movie_genre_to_text, \
@@ -46,6 +47,7 @@ class MovieLens(ContextualBandit):
         self.save_data_dir = save_data_dir
 
         self.history = []
+        self.h = 0
 
         if '100k' in self.task_name:
             self.start_user_idx = 0
@@ -200,7 +202,13 @@ class MovieLensVerbal(VerbalBandit):
         return self.bandit_scenario.action_names
 
     def step(self, state: State, action: Action) -> Tuple[State, float, bool, Dict[str, Any]]:
-        """action: we expect string here, can be model's raw completion output. We attempt to parse with `action_parsing`."""
+        """
+        :param action:   We expect the action string to follow this format:
+                         `MovieTitle (Year)` or `MovieTitle (Year) (Genre1|Genre2|...)`
+                         We do not take only the movie title out of the possibility of two movies with the same title
+                         being released in two different years.
+        :return:
+        """
 
         # VerbalBandit takes in an action that's a string, which is the action name
         assert type(action) == str, "Action must be a string for VerbalBandit"
@@ -210,18 +218,21 @@ class MovieLensVerbal(VerbalBandit):
         if action_id is None:
             action_id = int(self.core_bandit.np_random.integers(0, self.core_bandit.num_arms))
 
-        obs, reward, done, info = self.core_bandit.step(action_id)
+        obs, reward, done, info = self.core_bandit.step(state, action_id)
         text = self.verbalize_state(obs)
         obs.feature = text
 
+        feedback = self.verbalize_feedback(self.action_names[action_id], reward)
+
         interaction = VerbalInteraction(state, action, action_id,
                                         self.action_names[action_id],
-                                        self.core_bandit.reward_fn(state, action_id), is_random)
+                                        self.core_bandit.reward_fn(state, action_id),
+                                        feedback,
+                                        is_random)
         self.history.append(interaction)
 
         info['interaction'] = interaction
         info['is_random'] = is_random
-        info['feedback'] = self.verbalize_feedback(interaction.mapped_action_name, reward)
 
         return obs, reward, done, info
 
@@ -235,6 +246,13 @@ class MovieLensVerbal(VerbalBandit):
         return feedback
 
     def action_parsing(self, model_completion: str) -> Union[int, None]:
+        """
+        :param model_completion: We expect the completion string to follow this format:
+                                 `MovieTitle (Year)` or `MovieTitle (Year) (Genre1|Genre2|...)`
+                                 We do not take only the movie title out of the possibility of two movies with the same title
+                                 being released in two different years.
+        :return:
+        """
         model_completion = model_completion.strip()
         query_parts = model_completion.split("(")
         try:
@@ -244,7 +262,7 @@ class MovieLensVerbal(VerbalBandit):
             # Create a regex pattern to match the query
             pattern = rf"^{re.escape(title)}\s*\({re.escape(year)}\)"
 
-            movie_list = self.prompt_info.options[: self.k_arms]
+            movie_list = self.bandit_scenario.action_names[: self.num_arms]
             for index, movie in enumerate(movie_list):
                 if re.match(pattern, movie):
                     return index
@@ -294,7 +312,6 @@ class MovieLensVerbal(VerbalBandit):
                 movie_name = str('The ' + movie_name.replace(', The', ''))
 
             genre_text = ''
-            genre_list = None
             if type(genres) == str:
                 genres = parse_int_list(genres)
             else:

@@ -1,5 +1,5 @@
 import numpy as np
-from banditbench.tasks.mab.env import Interaction
+from banditbench.tasks.mab.env import Interaction, VerbalInteraction
 from banditbench.tasks.mab.env import BernoulliBandit, GaussianBandit, VerbalMultiArmedBandit
 
 
