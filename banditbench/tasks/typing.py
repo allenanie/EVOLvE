@@ -71,6 +71,40 @@ class Trajectory(list):
 
     def model_dump_json(self, **kwargs) -> str:
         return json.dumps(self.model_dump(**kwargs))
+    
+    @classmethod
+    def model_validate(cls, data: List[Dict[str, Any]]) -> 'Trajectory':
+        """
+        Create a Trajectory from a list of dictionaries containing interaction data.
+        Similar to Pydantic's model_validate method.
+        """
+
+        # we do a local import to avoid looped import
+        from banditbench.tasks.mab.env import Interaction as MABInteraction, VerbalInteraction as MABVerbalInteraction
+        from banditbench.tasks.cb.env import Interaction as CBInteraction, VerbalInteraction as CBVerbalInteraction
+
+        interactions = []
+        for item in data:
+            # Determine interaction type from the data structure
+            if 'mapped_action_name' in item:
+                # Verbal interaction
+                if 'state' in item:
+                    # CB verbal interaction has state
+                    interaction = CBVerbalInteraction.model_validate(item)
+                else:
+                    # MAB verbal interaction has no state
+                    interaction = MABVerbalInteraction.model_validate(item)
+            else:
+                # Regular interaction
+                if 'state' in item:
+                    # CB interaction has state
+                    interaction = CBInteraction.model_validate(item)
+                else:
+                    # MAB interaction has no state
+                    interaction = MABInteraction.model_validate(item)
+            interactions.append(interaction)
+            
+        return cls(interactions)
 
 
 class InteractionBase:
