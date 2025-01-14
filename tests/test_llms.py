@@ -174,3 +174,56 @@ def test_cb_agent_sh_with_ag():
     print(constructed_llm_message)
 
 # need to test reset!!!!!
+def test_mab_agent_rh_reset():
+    agent = LLMMABAgentRH(verbal_bandit)
+    agent.generate = lambda x: x  # so that the LLM is not triggered
+
+    mab_fake_steps(agent)
+
+    agent.reset()
+    assert len(agent.interaction_history) == 0
+
+def test_mab_agent_sh_reset():
+    agent = LLMMABAgentSH(verbal_bandit)
+    agent.generate = lambda x: x  # so that the LLM is not triggered
+
+    mab_fake_steps(agent)
+    agent.reset()
+
+def test_mab_agent_sh_with_ag_reset():
+    guide = UCBGuide(UCBAgent(core_bandit))
+    agent = LLMMABAgentSHWithAG(verbal_bandit, guide)
+    agent.generate = lambda x: x  # so that the LLM is not triggered
+
+    mab_fake_steps(agent)
+
+    agent.reset()
+
+    # fully reset both agent and the AlgorithmGuide's agent
+    assert len(agent.interaction_history) == 0
+    assert agent.ag.agent.arms[0] == 0
+
+def test_cb_agent_rh_reset():
+    init_cb_env()
+    agent = LLMCBAgentRH(verbal_env)
+    agent.generate = lambda x: x  # so that the LLM is not triggered
+
+    state = cb_fake_steps(agent)
+
+    agent.reset()
+
+    assert len(agent.interaction_history) == 0
+
+def test_cb_agent_sh_with_ag_reset():
+    init_cb_env()
+    guide = LinUCBGuide(LinUCBAgent(env))
+    agent = LLMCBAgentRHWithAG(verbal_env, guide)
+    agent.generate = lambda x: x  # so that the LLM is not triggered
+
+    state = cb_fake_steps(agent)
+
+    agent.reset()
+
+    assert len(agent.interaction_history) == 0
+    assert len(agent.ag_info_history) == 0
+    assert agent.ag.agent.b[0][0] == 0

@@ -8,6 +8,7 @@ from banditbench.tasks.cb.env import State
 
 from typing import Union, Dict, Any
 
+
 class Agent:
     name: str
 
@@ -16,7 +17,8 @@ class Agent:
         self.k_arms = env.num_arms
 
     def reset(self):
-        raise NotImplementedError
+        # no action
+        pass
 
 
 class MABAgent(Agent):
