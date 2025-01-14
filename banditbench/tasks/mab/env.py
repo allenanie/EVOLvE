@@ -95,7 +95,11 @@ class MultiArmedBandit(Bandit):
         self.h += 1
         done = self.h == self.horizon
         reward = self.reward_fn(action)
-        self.history.append(Interaction(action, reward, self.expected_reward(action)))
+        interaction = Interaction(action, reward, self.expected_reward(action), is_random=False)
+        self.history.append(interaction)
+
+        info['interaction'] = interaction
+        info['is_random'] = False
 
         return None, reward, done, info
 

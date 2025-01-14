@@ -6,6 +6,8 @@ import pytest
 from banditbench.sampling.sampler import DatasetBuffer, Trajectory
 from banditbench.tasks.mab import BernoulliBandit, VerbalMultiArmedBandit
 
+from banditbench.agents.classics import UCBAgent
+
 from banditbench.tasks.mab.env import Interaction as MABInteraction, VerbalInteraction as MABVerbalInteraction
 from banditbench.tasks.cb.env import Interaction as CBInteraction, VerbalInteraction as CBVerbalInteraction
 
@@ -69,9 +71,9 @@ def test_multiple_trajectories(temp_files):
     for _ in range(n_trajectories):
         _, reward, done, info = verbal_bandit.step('A')
         inter1 = info['interaction']
-        _, reward, done, info = verbal_bandit.step('B') 
+        _, reward, done, info = verbal_bandit.step('B')
         inter2 = info['interaction']
-        
+
         traj = inter1 + inter2
         buffer.append(traj)
 
@@ -85,3 +87,12 @@ def test_multiple_trajectories(temp_files):
         assert len(traj) == 2
         assert isinstance(traj[0], MABVerbalInteraction)
         assert isinstance(traj[1], MABVerbalInteraction)
+
+
+def test_mab_sampling():
+    core_bandit = BernoulliBandit(2, 200, [0.2, 0.5], 123)
+
+    agent = UCBAgent(core_bandit)
+    dataset = agent.collect(core_bandit, 100)
+    assert len(dataset) == 100
+    dataset.plot_performance()

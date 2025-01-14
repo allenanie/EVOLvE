@@ -1,48 +1,17 @@
 import math
 import scipy
 import numpy as np
-from banditbench.tasks.env import Bandit, VerbalBandit
 from banditbench.tasks.mab.env import MultiArmedBandit
 from banditbench.tasks.cb.env import ContextualBandit
 from banditbench.tasks.cb.env import State
 
 from typing import Union, Dict, Any
 
-
-class Agent:
-    name: str
-
-    def __init__(self, env: Union[Bandit, VerbalBandit]) -> None:
-        self.env = env
-        self.k_arms = env.num_arms
-
-    def reset(self):
-        # no action
-        pass
+from banditbench.agents.typing import MABAgent, CBAgent
+from banditbench.sampling.sampler import DataCollection
 
 
-class MABAgent(Agent):
-
-    def act(self) -> int:
-        """Same as performing a sampling step."""
-        raise NotImplementedError
-
-    def update(self, action: int, reward: float, info: Dict[str, Any]) -> None:
-        """The action performs an update step based on the action it chose, and the reward it received."""
-        raise NotImplementedError
-
-
-class CBAgent(Agent):
-    def act(self, state: State) -> int:
-        """Same as performing a sampling step."""
-        raise NotImplementedError
-
-    def update(self, state: State, action: int, reward: float, info: Dict[str, Any]) -> None:
-        """The action performs an update step based on the action it chose, and the reward it received."""
-        raise NotImplementedError
-
-
-class UCBAgent(MABAgent):
+class UCBAgent(MABAgent, DataCollection):
     """alpha-UCB, where alpha is the exploration bonus coefficient"""
     name: str = "UCB"
 
