@@ -72,6 +72,7 @@ class MABRawHistoryFunc(HistoryFunc):
 
         return snippet
 
+
 class CBRawHistoryFunc(HistoryFunc):
     def _represent_interaction_history(self, action_names: List[str], action_unit: str,
                                        history_len: int) -> str:
@@ -87,6 +88,7 @@ class CBRawHistoryFunc(HistoryFunc):
             snippet += f"\nReward: {exp.reward}\n"
 
         return snippet
+
 
 class SummaryHistoryFunc(HistoryFunc):
     """Summarizes interaction history for LLM prompt."""
@@ -160,7 +162,8 @@ class LLMMABAgent(MABAgent, LLM, HistoryFunc):
                                                    self.history_context_len)
 
     def reset(self):
-        super().reset()
+        super().reset()  # MABAgent.reset()
+        self.interaction_history = []
 
 
 class LLMCBAgent(CBAgent, LLM, HistoryFunc):
@@ -200,7 +203,8 @@ class LLMCBAgent(CBAgent, LLM, HistoryFunc):
                                                    self.history_context_len)
 
     def reset(self):
-        super().reset()
+        super().reset()  # MABAgent.reset()
+        self.interaction_history = []
 
 
 class LLMMABAgentSH(LLMMABAgent, SummaryHistoryFunc):
@@ -233,6 +237,7 @@ class MABAlgorithmGuideWithSummaryHistory(HistoryFunc):
         self.ag.agent.update(action, reward, info)
 
     def reset(self):
+        super().reset()  # HistoryFunc.reset()
         self.ag.agent.reset()
 
     def _represent_interaction_history(self, action_names: List[str], action_unit: str,
@@ -277,7 +282,9 @@ class CBAlgorithmGuideWithRawHistory(HistoryFunc):
         assert type(ag) is LinUCBGuide, "The information is provided per context, per action"
 
     def reset(self):
+        super().reset()  # HistoryFunc.reset()
         self.ag.agent.reset()
+        self.ag_info_history = []
 
     def update_algorithm_guide(self, state: State, action: int, reward: float, info: Dict[str, Any]) -> None:
         """Enhance update to include algorithm guide updates."""
@@ -324,7 +331,8 @@ class LLMMABAgentSHWithAG(LLMMABAgent, LLM, MABAlgorithmGuideWithSummaryHistory)
         self.update_algorithm_guide(action, reward, info)
 
     def reset(self):
-        super().reset()
+        super().reset()  # LLMMABAgent.reset()
+        self.ag.agent.reset()
 
 
 class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBAlgorithmGuideWithRawHistory):
@@ -348,4 +356,6 @@ class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBAlgorithmGuideWithRawHistory):
         self.update_algorithm_guide(state, action, reward, info)
 
     def reset(self):
-        super().reset()
+        super().reset()  # LLMCBAgent.reset()
+        self.ag_info_history = []
+        self.ag.agent.reset()
