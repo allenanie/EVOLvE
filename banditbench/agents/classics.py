@@ -15,6 +15,9 @@ class Agent:
         self.env = env
         self.k_arms = env.num_arms
 
+    def reset(self):
+        raise NotImplementedError
+
 
 class MABAgent(Agent):
 
@@ -45,7 +48,11 @@ class UCBAgent(MABAgent):
         super().__init__(env)
         self.actions = list(range(self.k_arms))
         self.alpha = alpha
-        self.reset()
+
+        self.arms = [0] * self.k_arms  # Number of times each arm has been pulled
+        self.rewards = [0] * self.k_arms  # Accumulated rewards for each arm
+        self.exploration_bonuses = [0] * self.k_arms
+        self.exploitation_values = [0] * self.k_arms
 
     def reset(self):
         self.arms = [0] * self.k_arms  # Number of times each arm has been pulled
@@ -110,7 +117,8 @@ class ThompsonSamplingAgent(UCBAgent):
         self.alpha_prior = alpha_prior
         self.beta_prior = beta_prior
         super().__init__(env)
-        self.reset()
+        self.alpha = [self.alpha_prior] * self.k_arms
+        self.beta = [self.beta_prior] * self.k_arms
 
     def reset(self):
         self.alpha = [self.alpha_prior] * self.k_arms
@@ -138,6 +146,8 @@ class LinUCBAgent(CBAgent):
 
         self.d = env.feature_dim
         self.alpha = alpha
+        self.A = [np.identity(self.d) for _ in range(self.k_arms)]
+        self.b = [np.zeros((self.d, 1)) for _ in range(self.k_arms)]
 
     def reset(self):
         # init must be called before reset

@@ -31,3 +31,5 @@ def test_ts_guide():
     print(ts_guide.get_action_guide_info(0).to_str())
 
 test_action_info_field()
+test_action_info()
+test_ucb_guide()

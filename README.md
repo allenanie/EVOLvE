@@ -24,6 +24,10 @@ We represent the decision making context into three segments:
 
 For example, algorithm guide provides side information that is updated during each historical interaction, but it is also changed to make the next decision.
 
+## LLM Agents
+
+We adopt a Mixin design. You can read up on it here.
+The reason for this design is to provide more customizability for agent design.
 
 ### Debug FAQ
 

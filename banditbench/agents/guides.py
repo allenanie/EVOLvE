@@ -2,7 +2,7 @@ from typing import List, Dict, Any, Union
 import scipy
 import numpy as np
 from pydantic import BaseModel
-from banditbench.agents.classics import Agent, UCBAgent, ThompsonSamplingAgent, GreedyAgent, LinUCBAgent
+from banditbench.agents.classics import MABAgent, CBAgent, UCBAgent, ThompsonSamplingAgent, GreedyAgent, LinUCBAgent
 from banditbench.tasks.cb.env import State
 
 
@@ -56,6 +56,30 @@ class ActionInfo(BaseModel):
         else:
             raise ValueError(f"Unsupported type: {type(other)}")
 
+    def get_info_by_name(self, info_name: str) -> Union[ActionInfoField, None]:
+        """Retrieve an ActionInfoField by its info_name."""
+        for field in self.action_info_fields:
+            if field.info_name == info_name:
+                return field
+        return None
+
+    def get_value_by_name(self, info_name: str) -> Union[float, str, None]:
+        """Retrieve just the value of an ActionInfoField by its info_name."""
+        field = self.get_info_by_name(info_name)
+        if field is not None:
+            return field.value
+        return None
+
+    def __getitem__(self, key: Union[str, int]) -> Union[float, str, None, ActionInfoField]:
+        """Allow both dictionary-style access by info_name and list-style access by index."""
+        if isinstance(key, str):
+            return self.get_value_by_name(key)
+        elif isinstance(key, int):
+            if 0 <= key < len(self.action_info_fields):
+                return self.action_info_fields[key]
+            raise IndexError("Index out of range")
+        raise TypeError(f"Invalid key type: {type(key)}")
+
 
 class VerbalGuide:
     # VerbalGuide can be retrieved in two ways:
@@ -63,7 +87,7 @@ class VerbalGuide:
     # Q(s=None, a) # MAB
     # Q(s, a) # CB
 
-    def __init__(self, agent: Agent):
+    def __init__(self, agent: Union[MABAgent, CBAgent]):
         self.agent = agent
 
     def get_action_guide_info(self, arm: int) -> ActionInfo:
@@ -90,7 +114,7 @@ class UCBGuide(VerbalGuide):
             arm_info = self.get_state_action_guide_info(arm)
             actions_info.append(arm_info)
 
-        assert len(actions_info) == len(self.agent.actions)
+        assert len(actions_info) == self.agent.k_arms
         return actions_info
 
     def get_action_guide_info(self, arm: int) -> ActionInfo:
