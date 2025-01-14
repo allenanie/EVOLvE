@@ -17,6 +17,7 @@ def safe_json_encode(obj):
 
 class State(BaseModel):
     feature: Any  # must be numpy array
+    feature_text: Union[str, None] = None  # a text representation of the feature
     index: Union[int, None]  # a pointer to the dataset (if there is a dataset)
     info: Info = None  # additional information
 

@@ -29,6 +29,7 @@ For example, algorithm guide provides side information that is updated during ea
 We adopt a Mixin design. You can read up on it here.
 The reason for this design is to provide more customizability for agent design.
 
-### Debug FAQ
+##  FAQ
 
 1. There is some potential issue with `TFDS` (Tensorflow Datasets) library. If you open two Jupyter notebooks sharing the same kernel, and try to load the dataset -- even with different save location, the kernel might still die. Not clear what the immediate fix is.
+2. We use `Tensorflow-Datasets` package, which requires `Tensorflow`. This is an unfortunate choice and we will try to remove `Tensorflow` dependencies in the future.

@@ -23,8 +23,18 @@ class ActionInfoField(BaseModel):
         else:
             return self.info_template.format(self.value)
 
-    def to_str(self):
-        return str(self)
+    def to_str(self, json_fmt=False):
+        """
+        :param json_fmt: if set True, will mimic JSON format in string like `{info_name: value}` explicitly in string
+        :return:
+        """
+        if json_fmt and self.info_template is None:
+            if isinstance(self.value, float):
+                return "{" + f"\"{self.info_name}\": {self.value:.2f}" + "}"
+            else:
+                return "{" + f"\"{self.info_name}\": {self.value}" + "}"
+        else:
+            return str(self)
 
     def __add__(self, other: Union['ActionInfoField', 'ActionInfo']):
         if isinstance(other, ActionInfoField):
@@ -42,8 +52,11 @@ class ActionInfo(BaseModel):
     def __str__(self):
         return ", ".join([info.to_str() for info in self.action_info_fields])
 
-    def to_str(self):
-        return str(self)
+    def to_str(self, json_fmt=False):
+        if not json_fmt:
+            return str(self)
+        else:
+            return ", ".join([info.to_str(json_fmt=True) for info in self.action_info_fields])
 
     def __len__(self):
         return len(self.action_infos)
@@ -180,7 +193,8 @@ class LinUCBGuide(VerbalGuide):
         A_inv = np.linalg.inv(self.agent.A[a])
         theta = A_inv.dot(self.agent.b[a])
         exploration_bonus = self.agent.alpha * np.sqrt(context.T.dot(A_inv).dot(context))
-        exploitation_value = theta.T.dot(context)[0, 0]
+        # exploitation_value = theta.T.dot(context)[0, 0]
+        exploitation_value = theta.T.dot(context)[0]
 
         exp_bonus_guide = ActionInfoField(info_name='exploration bonus', value=exploration_bonus)
         exp_value_guide = ActionInfoField(info_name='exploitation value', value=exploitation_value)

@@ -22,8 +22,8 @@ class Interaction(BaseModel, InteractionBase):
 class VerbalInteraction(BaseModel, InteractionBase):
     state: State
     action: Action
-    mapped_action: Action
-    mapped_action_name: Action
+    mapped_action: int  # index
+    mapped_action_name: str
     reward: float
     feedback: str
     is_random: Union[bool, None] = None

@@ -1,6 +1,5 @@
 import re
 import numpy as np
-import tensorflow_datasets as tfds
 
 # Remove these two??
 # MOVIELENS_NUM_USERS = 943
@@ -57,6 +56,8 @@ def parse_int_list(s):
 
 
 def load_data_files(bandit_type, save_data_dir=None):
+    import tensorflow_datasets as tfds
+
     # Try loading cached files first
     print("loading from tfds")
     if bandit_type == '100k-ratings':
@@ -64,7 +65,8 @@ def load_data_files(bandit_type, save_data_dir=None):
     elif bandit_type == '1m-ratings':
         ratings = tfds.load('movielens/1m-ratings', data_dir=save_data_dir)
     else:
-        raise Exception('Not implemented yet')
+        ratings = tfds.load(bandit_type, data_dir=save_data_dir)
+        raise ValueError(f"Other movielens datasets not verified yet: {bandit_type}")
 
     ratings_df = tfds.as_dataframe(ratings['train'])  # there is only one split
     print("data converted to pandas dataframe")

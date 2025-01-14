@@ -134,7 +134,7 @@ class MovieLens(ContextualBandit):
             'user_features': user_features
         }
 
-        state = State(feature=svd_features, index=user_index, info=feat_dict)
+        state = State(feature=svd_features, feature_text=None, index=user_index, info=feat_dict)
 
         return state
 
@@ -220,12 +220,12 @@ class MovieLensVerbal(VerbalBandit):
 
         obs, reward, done, info = self.core_bandit.step(state, action_id)
         text = self.verbalize_state(obs)
-        obs.feature = text
+        obs.feature_text = text
 
-        feedback = self.verbalize_feedback(self.action_names[action_id], reward)
+        feedback = self.verbalize_feedback(self.action_names[action_id].split(") (")[0] + ')', reward)
 
         interaction = VerbalInteraction(state, action, action_id,
-                                        self.action_names[action_id],
+                                        self.action_names[action_id].split(") (")[0] + ')',
                                         self.core_bandit.reward_fn(state, action_id),
                                         feedback,
                                         is_random)
@@ -273,7 +273,7 @@ class MovieLensVerbal(VerbalBandit):
         self.history = []
         obs, _ = self.core_bandit.reset(seed)
         text = self.get_user_feat_text(obs.feature, obs.info['user_features'])
-        obs.feature = text
+        obs.feature_text = text
 
         verbal_instruction = self.bandit_scenario.get_instruction(self.instruction_type)
 

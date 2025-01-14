@@ -91,8 +91,8 @@ class MovieLensScenario(ScenarioUtil, CBScenario):
 
     def get_query_prompt(self, state: State, side_info: Optional[str] = None):
         assert type(
-            state.feature) == str, "Verbal bandit produces string as feature, make sure you are using the right bandit class"
-        prompt = self.query_prompt.format(feature=state.feature)
+            state.feature_text) is str, "Verbal bandit produces string as feature, make sure you are using the right bandit class"
+        prompt = self.query_prompt.format(feature=state.feature_text)
         if side_info is not None:
             prompt += f"Side Information for decision making:\n{side_info}"
 

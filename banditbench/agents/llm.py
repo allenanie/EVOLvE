@@ -83,8 +83,8 @@ class CBRawHistoryFunc(HistoryFunc):
         history_len = min(history_len, len(self.interaction_history))
         snippet = ""
         for exp in self.interaction_history[-history_len:]:
-            snippet += f"\nContext: {exp.feedback}"
-            snippet += f"\nAction: {exp.mapped_action_name.split(') (')[0] + ')'}"  # this is to replicate the same style as the paper
+            snippet += f"\nContext: {exp.state.feature_text}"
+            snippet += f"\nAction: {exp.mapped_action_name}"  # this is to replicate the same style as the paper
             snippet += f"\nReward: {exp.reward}\n"
 
         return snippet
@@ -188,7 +188,7 @@ class LLMCBAgent(CBAgent, LLM, HistoryFunc):
         # Implement LLM-based contextual action selection
         task_instruction = self.env.get_task_instruction()
         history_context = self.represent_history()
-        query = self.env.get_query_prompt(state, None)
+        query = self.env.get_query_prompt(state, side_info=None)
 
         response = self.generate(task_instruction + history_context + query)
         return response
@@ -303,11 +303,15 @@ class CBAlgorithmGuideWithRawHistory(HistoryFunc):
         history_len = min(history_len, len(self.interaction_history))
         snippet = ""
         for exp, ag_info in zip(self.interaction_history[-history_len:], self.ag_info_history[-history_len:]):
-            snippet += f"\nContext: {exp.feedback}"
+            snippet += f"\nContext: {exp.state.feature_text}"
             snippet += f"\nSide Information for decision making:"
-            for action_info in ag_info:
-                snippet += '\n' + action_info.to_str()
-            snippet += f"\nAction: {exp.mapped_action_name.split(') (')[0] + ')'}"  # this is to replicate the same style as the paper
+            for i, action_info in enumerate(ag_info):
+                # normal format
+                # snippet += '\n' + action_names[i].split(") (")[0] + ")" + ": " + action_info.to_str()
+
+                # JSON-like format used in the paper
+                snippet += '\n{\"' + action_names[i].split(") (")[0] + ")\"" + ": " + action_info.to_str(json_fmt=True) + "}"
+            snippet += f"\nAction: {exp.mapped_action_name}"
             snippet += f"\nReward: {exp.reward}\n"
 
         return snippet
@@ -359,3 +363,25 @@ class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBAlgorithmGuideWithRawHistory):
         super().reset()  # LLMCBAgent.reset()
         self.ag_info_history = []
         self.ag.agent.reset()
+
+    def act(self, state: State) -> str:
+        """Generate next action using LLM and context."""
+        # Implement LLM-based contextual action selection
+        task_instruction = self.env.get_task_instruction()
+        history_context = self.represent_history()
+
+        ag_info = self.ag.get_state_actions_guide_info(state)
+        snippet = ""
+        for i, action_info in enumerate(ag_info):
+            # normal format
+            # snippet += '\n' + action_names[i].split(") (")[0] + ")" + ": " + action_info.to_str()
+
+            # JSON-like format used in the paper
+            snippet += '\n{\"' + self.env.action_names[i].split(") (")[0] + ")\"" + ": " + action_info.to_str(
+                json_fmt=True) + "}"
+        snippet += '\n'
+
+        query = self.env.get_query_prompt(state, side_info=snippet)
+
+        response = self.generate(task_instruction + history_context + query)
+        return response
