@@ -6,7 +6,7 @@ import numpy as np
 from pathlib import Path
 from typing import Union, Dict, Any, List
 from banditbench.tasks.env import VerbalBandit, Bandit
-from banditbench.tasks.cb import ContextualBandit
+from banditbench.tasks.cb.env import ContextualBandit
 from banditbench.tasks.typing import Trajectory
 from banditbench.agents.typing import Agent, ActionInfo
 
@@ -72,11 +72,22 @@ class DatasetBuffer:
         return len(self.trajectories)
 
     def __getitem__(self, idx):
-        return Data(
-            trajectory=self.trajectories[idx],
-            action_info=self.ag_info[idx] if self.ag_info else None,
-            verbal_prompts=self.verbal_prompts[idx] if self.verbal_prompts else None
-        )
+        if isinstance(idx, slice):
+            # Handle slice indexing
+            trajectories = self.trajectories[idx]
+            ag_info = self.ag_info[idx] if self.ag_info else None 
+            verbal_prompts = self.verbal_prompts[idx] if self.verbal_prompts else None
+            
+            # Create new buffer with sliced data
+            new_buffer = DatasetBuffer(trajectories, ag_info, verbal_prompts)
+            return new_buffer
+        else:
+            # Handle single index
+            return Data(
+                trajectory=self.trajectories[idx],
+                action_info=self.ag_info[idx] if self.ag_info else None,
+                verbal_prompts=self.verbal_prompts[idx] if self.verbal_prompts else None
+            )
 
     def __str__(self):
         return f"DatasetBuffer({len(self)} trajectories)"

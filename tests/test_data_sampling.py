@@ -128,13 +128,22 @@ def test_databuffer_slicing():
     assert sliced_buffer[1] == buffer[2]
 
 
-def test_mab_sampling():
+def test_mab_sampling(temp_files):
     core_bandit = BernoulliBandit(2, 200, [0.2, 0.5], 123)
 
     agent = UCBAgent(core_bandit)
     dataset = agent.collect(core_bandit, 100)
     assert len(dataset) == 100
     dataset.plot_performance()
+
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
+    temp_files.append(temp_file.name)
+    temp_file.close()
+
+    dataset.save(temp_file.name)
+    loaded_buffer = DatasetBuffer.load(temp_file.name)
+
+    assert len(loaded_buffer) == 20
 
 
 def test_mab_ag_sampling(temp_files):

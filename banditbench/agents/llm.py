@@ -4,7 +4,7 @@ import litellm
 from banditbench.agents.guides import VerbalGuide, UCBGuide, LinUCBGuide, ActionInfo
 from banditbench.tasks.typing import State, Info
 from banditbench.tasks.env import VerbalBandit
-from banditbench.sampling.sampler import DatasetBuffer, DataCollectWithLLMAgent
+from banditbench.sampling.sampler import DataCollectWithLLMAgent
 
 import banditbench.tasks.cb as cb
 import banditbench.tasks.mab as mab
@@ -237,101 +237,6 @@ class LLMCBAgent(CBAgent, LLM, HistoryFunc):
     def get_decision_query(self, state: State) -> str:
         query = self.env.get_query_prompt(state, side_info=None)
         return query
-
-
-class FewShot:
-    """
-    Takes in agent, and returns a FewShot agent
-    FewShot.empower(agent, *configs) # becomes a FewShotAgent
-
-    Agent stores the state, not FewShot class
-
-    This is a passthrough class.
-    It augments the original agent's behavior with few-shot examples.
-
-    We use class variables to help applying the same config to different agents without reprocessing
-    """
-
-    data_buffer: Optional[DatasetBuffer] = None
-    filename: Optional[str] = None
-    num_examples: int = 5
-    skip_first: int = 2
-    sample_freq: int = 5
-
-    @classmethod
-    def empower(cls, agent: Union[LLMMABAgent, LLMCBAgent],
-                filename: Optional[str] = None,
-                num_examples: Optional[int] = None,
-                skip_first: Optional[int] = None,
-                sample_freq: int = 5) -> Union[LLMMABAgent, LLMCBAgent]:
-        """
-        This is the general "compilation" function that takes in the agent
-
-        :param skip_first: skip the first few examples (because the decision might not be very complex)
-        :param num_examples: The total number of examples in context
-        :param sample_freq: For each trajectory, the number of improvement steps are between each example
-        """
-        if filename is not None:
-            cls.filename = filename
-        if num_examples is not None:
-            cls.num_examples = num_examples
-
-        if skip_first is not None:
-            cls.skip_first = skip_first
-
-        if sample_freq is not None:
-            cls.sample_freq = sample_freq
-
-        if cls.filename is not None:
-            cls.data_buffer = DatasetBuffer.load(cls.filename)
-        else:
-            cls.data_buffer = None
-
-        # then determine MAB or CB to load the examples into agent
-        if type(agent) is LLMMABAgent:
-            agent.demos = cls.load_few_shot_mab_examples(agent)
-        elif type(agent) is LLMCBAgent:
-            agent.demos = cls.load_few_shot_cb_examples(agent)
-
-        return agent
-
-    @classmethod
-    def load_few_shot_mab_examples(cls, agent: Union[LLMMABAgent, LLMCBAgent]) -> str:
-        """This has to be different """
-        if cls.data_buffer is None:
-            return ""
-        else:
-            fewshot_prompt = agent.env.bandit_scenario.fewshot_prompt
-            fewshot_prompt += "========================"
-            start_idx = cls.skip_first
-            examples = cls.data_buffer[start_idx::cls.sample_freq][:cls.num_examples]
-            for example in examples:
-                fewshot_prompt += example["verbal_prompts"]['action_history'] + "\n\n"
-                # query
-                fewshot_prompt += example['verbal_prompts']['decision_query'] + "\n"
-                fewshot_prompt += f"\n{example['verbal_prompts']['label']}\n"
-                fewshot_prompt += "========================"
-
-            return fewshot_prompt
-
-    @classmethod
-    def load_few_shot_cb_examples(cls, agent: Union[LLMMABAgent, LLMCBAgent]) -> str:
-        """This has to be different """
-        if cls.data_buffer is None:
-            return ""
-        else:
-            fewshot_prompt = agent.env.bandit_scenario.fewshot_prompt
-            fewshot_prompt += "============Example Trajectory============"
-            start_idx = cls.skip_first
-            examples = cls.data_buffer[start_idx::cls.sample_freq][:cls.num_examples]
-            for example in examples:
-                fewshot_prompt += example["verbal_prompts"]['action_history'] + "\n\n"
-                # query
-                fewshot_prompt += example['verbal_prompts']['decision_query'] + "\n"
-                fewshot_prompt += f"\n{example['verbal_prompts']['label']}\n"
-                fewshot_prompt += "=============Example Trajectory==========="
-
-            return fewshot_prompt
 
 
 class OracleLLMMABAgent(LLMMABAgent):
@@ -662,3 +567,11 @@ class OracleLLMCBAgentRHWithAG(OracleLLMCBAgent, LLM, CBRawHistoryFuncWithAlgori
 
         query = self.env.get_query_prompt(state, side_info=snippet)
         return query
+
+
+# class LLMAgent:
+#     @classmethod
+#     def build(cls, env, *args, **kwargs):
+#         # this serves as a centralized initialization point
+#         # that will construct the underlying agents based on the parameters passed in
+#         pass
