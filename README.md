@@ -18,7 +18,8 @@ We represent the decision making context into three segments:
 
 ```text
 {Task Description + Instruction} (provided by the environment)
-{History of interaction} (decided by the agent)
+{Few-shot demonstrations from historical interactions}
+{Current history of interaction} (decided by the agent)
 {Query prompt for the next decision} (provided by the environment)
 ```
 

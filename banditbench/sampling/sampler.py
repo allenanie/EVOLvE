@@ -4,22 +4,26 @@ Hosts sampler mixin (used by agent to add create dataset functionality)
 import json
 import numpy as np
 from pathlib import Path
-from typing import Union, Dict, Any
+from typing import Union, Dict, Any, List
 from banditbench.tasks.typing import Trajectory
-from banditbench.agents.typing import Agent
+from banditbench.agents.typing import Agent, ActionInfo
 
 from banditbench.utils import plot_cumulative_reward
 
 
 class DatasetBuffer(list):
-    def __init__(self, trajectories=None):
+    def __init__(self, trajectories=None, action_infos=None):
         super().__init__(trajectories or [])
+        self.action_infos = action_infos or []
 
-    def add(self, trajectory: Trajectory):
+    def add(self, trajectory: Trajectory, action_info: Union[List[ActionInfo], None] = None):
         self.append(trajectory)
+        if action_info is not None:
+            self.action_infos.append(action_info)
 
     def clear(self):
         super().clear()
+        self.action_infos.clear()
 
     def __str__(self):
         return f"DatasetBuffer({len(self)} trajectories)"
@@ -32,6 +36,8 @@ class DatasetBuffer(list):
             result = DatasetBuffer()
             result.extend(self)
             result.extend(other)
+            result.action_infos.extend(self.action_infos)
+            result.action_infos.extend(other.action_infos)
             return result
         else:
             raise ValueError(f"Unsupported type: {type(other)}")
@@ -47,7 +53,11 @@ class DatasetBuffer(list):
             'n_trajectories': len(self),
             'trajectories': [
                 traj.model_dump() for traj in self
-            ]
+            ],
+            'action_infos': [
+                [info.model_dump() for info in action_info_list] 
+                for action_info_list in self.action_infos
+            ] if self.action_infos else []
         }
 
         with open(filepath, 'w') as f:
@@ -64,6 +74,12 @@ class DatasetBuffer(list):
         for traj_data in data['trajectories']:
             traj = Trajectory.model_validate(traj_data)
             buffer.append(traj)
+
+        if 'action_infos' in data and data['action_infos']:
+            for action_info_list in data['action_infos']:
+                buffer.action_infos.append([
+                    ActionInfo.model_validate(info) for info in action_info_list
+                ])
 
         return buffer
 
@@ -82,7 +98,7 @@ class DatasetBuffer(list):
         plot_cumulative_reward(all_rewards, horizon, title)
 
 
-class DataCollection:
+class DataCollect:
 
     def collect(self, env, n_trajectories=1000) -> DatasetBuffer:
         """Collect interactions from environment and store in buffer.
@@ -127,3 +143,14 @@ class DataCollection:
             trajectories_collected += 1
 
         return buffer
+
+
+class DataCollectWithAGInfo:
+    # this is the mixin for VerbalGuideAgent
+
+    def collect(self, env, n_trajectories=1000) -> DatasetBuffer:
+        # AG has an underlying agent
+        # but also provides utility class to load in action info
+        # we need to both get the interaction from the underlying agent
+        # and collect the action info from the AG
+        pass

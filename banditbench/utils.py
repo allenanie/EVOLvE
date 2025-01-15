@@ -6,6 +6,13 @@ import matplotlib.pyplot as plt
 from typing import List, Dict
 
 
+def compute_pad(total_elements, K, desired_pad=5):
+    # equal spaced sampling for few-shot in-context learning
+    available_space = total_elements - K
+    pad = min(desired_pad, available_space)
+    return max(0, pad)
+
+
 def dedent(text: str):
     """
     Remove leading and trailing whitespace for each line
@@ -51,6 +58,7 @@ def compute_cumulative_reward(all_rewards: List[List[float]], horizon: int):
     reward_sems = scipy.stats.sem(all_rewards, axis=0)
 
     return reward_means, reward_sems
+
 
 def plot_multi_cumulative_reward(config_name_to_all_rewards: Dict[str, List[List[float]]], horizon: int, title=None):
     """

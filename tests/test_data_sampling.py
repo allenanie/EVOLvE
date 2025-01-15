@@ -22,11 +22,10 @@ def temp_files():
             os.remove(file)
 
 
-core_bandit = BernoulliBandit(2, 10, [0.5, 0.2], 123)
-verbal_bandit = VerbalMultiArmedBandit(core_bandit, "VideoWatching")
-
-
 def test_save_and_load(temp_files):
+    core_bandit = BernoulliBandit(2, 10, [0.5, 0.2], 123)
+    verbal_bandit = VerbalMultiArmedBandit(core_bandit, "VideoWatching")
+
     # Create a temporary file
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
     temp_files.append(temp_file.name)
@@ -60,6 +59,9 @@ def test_save_and_load(temp_files):
 
 
 def test_multiple_trajectories(temp_files):
+    core_bandit = BernoulliBandit(2, 10, [0.5, 0.2], 123)
+    verbal_bandit = VerbalMultiArmedBandit(core_bandit, "VideoWatching")
+
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
     temp_files.append(temp_file.name)
     temp_file.close()
@@ -88,6 +90,36 @@ def test_multiple_trajectories(temp_files):
         assert isinstance(traj[0], MABVerbalInteraction)
         assert isinstance(traj[1], MABVerbalInteraction)
 
+def test_databuffer_slicing():
+    core_bandit = BernoulliBandit(2, 10, [0.5, 0.2], 123)
+    verbal_bandit = VerbalMultiArmedBandit(core_bandit, "VideoWatching")
+
+    buffer = DatasetBuffer()
+    n_trajectories = 3
+
+    # Add multiple trajectories
+    for _ in range(n_trajectories):
+        _, reward, done, info = verbal_bandit.step('A')
+        inter1 = info['interaction']
+        _, reward, done, info = verbal_bandit.step('B')
+        inter2 = info['interaction']
+        _, reward, done, info = verbal_bandit.step('B')
+        inter3 = info['interaction']
+
+        traj = inter1 + inter2 + inter3
+        buffer.append(traj)
+
+    # Test slicing
+    sliced_buffer = buffer[:1]
+    assert len(sliced_buffer) == 1
+    assert sliced_buffer[0] == buffer[0]
+    sliced_buffer = buffer[1:2]
+    assert sliced_buffer[0] == buffer[1]
+    assert len(sliced_buffer) == 1
+    sliced_buffer = buffer[0:2]
+    assert len(sliced_buffer) == 2
+    assert sliced_buffer[0] == buffer[0]
+    assert sliced_buffer[1] == buffer[2]
 
 def test_mab_sampling():
     core_bandit = BernoulliBandit(2, 200, [0.2, 0.5], 123)
@@ -96,3 +128,6 @@ def test_mab_sampling():
     dataset = agent.collect(core_bandit, 100)
     assert len(dataset) == 100
     dataset.plot_performance()
+
+def test_mab_ag_sampling():
+    pass

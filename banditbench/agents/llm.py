@@ -5,9 +5,12 @@ from banditbench.agents.classics import MABAgent, CBAgent
 from banditbench.agents.guides import VerbalGuide, UCBGuide, LinUCBGuide, ActionInfo
 from banditbench.tasks.typing import State, Info
 from banditbench.tasks.env import VerbalBandit
+from banditbench.sampling.sampler import DatasetBuffer
 
 import banditbench.tasks.cb as cb
 import banditbench.tasks.mab as mab
+
+from banditbench.utils import compute_pad
 
 
 class LLM:
@@ -124,8 +127,65 @@ class SummaryHistoryFunc(HistoryFunc):
 
         return snippet
 
+class FewShot:
+    data_buffer: Optional[DatasetBuffer]
+    fewshot_filename: Optional[str]
+    sample_freq: int
+    num_examples: int
+    skip_first: int
 
-class LLMMABAgent(MABAgent, LLM, HistoryFunc):
+    env: VerbalBandit
+
+    def __init__(self, filename: Optional[str] = None,
+                 num_examples: int = 5,
+                 skip_first: int = 2,
+                 sample_freq: int = 5):
+        """
+        :param skip_first: skip the first few examples (because the decision might not be very complex)
+        :param num_examples: The total number of examples in context
+        :param sample_freq: For each trajectory, the number of improvement steps are between each example
+        """
+        self.fewshot_filename = filename
+        self.skip_first = skip_first
+        self.sample_freq = sample_freq
+        self.num_examples = num_examples
+
+        if filename is not None:
+            self.data_buffer = DatasetBuffer.load(filename)
+        else:
+            self.data_buffer = None
+
+class MABFewShot(FewShot):
+
+    def load_few_shot_examples(self) -> str:
+        if self.data_buffer is None:
+            return ""
+        else:
+            fewshot_prompt = (
+                "Here are some examples of optimal actions under different scenarios."
+                " Use them as hints to help you come up with better actions.\n"
+            )
+            fewshot_prompt += "========================"
+            start_idx = self.skip_first
+            examples = self.data_buffer[start_idx::self.sample_freq][:self.num_examples]
+            for example in examples:
+                # TODO: write this part (need to assemble the few-shot examples)
+                fewshot_prompt += example["action_history"] + "\n\n"
+                # ending
+                fewshot_prompt += (
+                        f"Which {self.env.bandit_scenario.action_unit} will you choose next? PLEASE"
+                        f" RESPOND ONLY WITH {color_str} AND NO TEXT EXPLANATION."
+                        + f"\n{example['label']}\n"
+                )
+                fewshot_prompt += "========================"
+
+            return fewshot_prompt
+
+class CBFewShot(FewShot):
+    pass
+
+
+class LLMMABAgent(MABAgent, LLM, HistoryFunc, MABFewShot):
     """LLM-based multi-armed bandit agent."""
 
     interaction_history: List[mab.VerbalInteraction]
@@ -310,7 +370,8 @@ class CBAlgorithmGuideWithRawHistory(HistoryFunc):
                 # snippet += '\n' + action_names[i].split(") (")[0] + ")" + ": " + action_info.to_str()
 
                 # JSON-like format used in the paper
-                snippet += '\n{\"' + action_names[i].split(") (")[0] + ")\"" + ": " + action_info.to_str(json_fmt=True) + "}"
+                snippet += '\n{\"' + action_names[i].split(") (")[0] + ")\"" + ": " + action_info.to_str(
+                    json_fmt=True) + "}"
             snippet += f"\nAction: {exp.mapped_action_name}"
             snippet += f"\nReward: {exp.reward}\n"
 
