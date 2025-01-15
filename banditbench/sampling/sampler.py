@@ -10,11 +10,18 @@ from banditbench.agents.typing import Agent, ActionInfo
 
 from banditbench.utils import plot_cumulative_reward
 
+"""
+DatasetBuffer has 3 components:
+ - Trajectories: List of Trajectory objects (bare minimum) (all agents will have this) (this is just the raw interaction history with the environment)
+ - ActionInfos: Additional information at each step of the decision (some agents have them, some don't) (for agent that has them, this is not exposed currently)
+ - VerbalPrompts: The prompt, task description that was sent into LLM to get the label (For LLM agent, and oracleLLM agent) (these are also not exposed)
+"""
 
 class DatasetBuffer(list):
     def __init__(self, trajectories=None, action_infos=None):
         super().__init__(trajectories or [])
         self.action_infos = action_infos or []
+        self.verbal_prompts = []
 
     def add(self, trajectory: Trajectory, action_info: Union[List[List[ActionInfo]], None] = None):
         # action_info: [Traject_length, Num_Action]
@@ -88,6 +95,17 @@ class DatasetBuffer(list):
 
     def save(self, file):
         self.dump(file)
+
+    def to_sft_format(self):
+        # The SFT format is a lossy format that only stores strings
+        # It's a list of dictionary  [{'task_description': "", 'action_history': "", 'label': ""}]
+        # where `label` is the action taken by the agent
+        # If there is side ag information, it would be present in the prompt
+        # prompt includes history of interations
+        pass
+
+    def save_sft_format(self):
+        pass
 
     def plot_performance(self, title=None):
         # plot the mean performance over all trajectories stored in the dataset

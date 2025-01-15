@@ -176,12 +176,9 @@ class MABFewShot(FewShot):
             for example in examples:
                 # TODO: write this part (need to assemble the few-shot examples)
                 fewshot_prompt += example["action_history"] + "\n\n"
-                # ending
-                fewshot_prompt += (
-                        f"Which {self.env.bandit_scenario.action_unit} will you choose next? PLEASE"
-                        f" RESPOND ONLY WITH {color_str} AND NO TEXT EXPLANATION."
-                        + f"\n{example['label']}\n"
-                )
+                # query
+                fewshot_prompt += self.env.get_query_prompt() + "\n"
+                fewshot_prompt += f"\n{example['label']}\n"
                 fewshot_prompt += "========================"
 
             return fewshot_prompt
