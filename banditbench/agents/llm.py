@@ -1,7 +1,6 @@
 from typing import Optional, List, Any, Dict, Union
 
 import litellm
-from banditbench.agents.classics import MABAgent, CBAgent
 from banditbench.agents.guides import VerbalGuide, UCBGuide, LinUCBGuide, ActionInfo
 from banditbench.tasks.typing import State, Info
 from banditbench.tasks.env import VerbalBandit
@@ -10,7 +9,7 @@ from banditbench.sampling.sampler import DatasetBuffer
 import banditbench.tasks.cb as cb
 import banditbench.tasks.mab as mab
 
-from banditbench.utils import compute_pad
+from banditbench.agents.typing import MABAgent, CBAgent, Agent
 
 
 class LLM:
@@ -220,7 +219,7 @@ class LLMMABAgent(MABAgent, LLM, HistoryFunc, MABFewShot):
         assert type(info['interaction']) is mab.VerbalInteraction
         self.interaction_history.append(info['interaction'])
 
-    def represent_history(self):
+    def represent_history(self) -> str:
         return self._represent_interaction_history(self.env.action_names, self.env.bandit_scenario.action_unit,
                                                    self.history_context_len)
 
@@ -261,13 +260,90 @@ class LLMCBAgent(CBAgent, LLM, HistoryFunc):
         assert type(info['interaction']) is cb.VerbalInteraction
         self.interaction_history.append(info['interaction'])
 
-    def represent_history(self):
+    def represent_history(self) -> str:
         return self._represent_interaction_history(self.env.action_names, self.env.bandit_scenario.action_unit,
                                                    self.history_context_len)
 
     def reset(self):
         super().reset()  # MABAgent.reset()
         self.interaction_history = []
+
+
+class OracleLLMMABAgent(LLMMABAgent):
+    def __init__(self, env: VerbalBandit, oracle_agent: MABAgent,
+                 model: str = "gpt-3.5-turbo", history_context_len=1000, verbose=False):
+        """
+        The oracle_agent will take action
+        """
+
+        super().__init__(env, model, history_context_len, verbose)
+        self.oracle_agent = oracle_agent
+        self.verbose = verbose
+
+    def act(self) -> str:
+        action_idx = self.oracle_agent.act()
+        return self.env.action_names[action_idx]
+
+    def update(self, action: int, reward: float, info: Dict[str, Any]) -> None:
+        # note that we don't have access to the expected reward on the agent side
+        assert 'interaction' in info
+        assert type(info['interaction']) is mab.VerbalInteraction
+        self.interaction_history.append(info['interaction'])
+        self.oracle_agent.update(action, reward, info)
+
+    def get_task_instruction(self) -> str:
+        task_instruction = self.env.get_task_instruction()
+        return task_instruction
+
+    def get_action_history(self) -> str:
+        history_context = self.represent_history()
+        return history_context
+
+    def get_decision_query(self) -> str:
+        query = self.env.get_query_prompt()
+        return query
+
+    def reset(self):
+        super().reset()
+        self.oracle_agent.reset()
+
+
+class OracleLLMCBAgent(LLMCBAgent):
+    def __init__(self, env: VerbalBandit, oracle_agent: CBAgent,
+                 model: str = "gpt-3.5-turbo", history_context_len=1000, verbose=False):
+        """
+        The oracle_agent will take action
+        """
+
+        super().__init__(env, model, history_context_len, verbose)
+        self.oracle_agent = oracle_agent
+        self.verbose = verbose
+
+    def act(self, state: State) -> str:
+        action_idx = self.oracle_agent.act(state)
+        return self.env.action_names[action_idx]
+
+    def update(self, state: State, action: int, reward: float, info: Dict[str, Any]) -> None:
+        assert 'interaction' in info
+        assert type(info['interaction']) is cb.VerbalInteraction
+        self.interaction_history.append(info['interaction'])
+        self.oracle_agent.update(state, action, reward, info)
+
+    def get_task_instruction(self) -> str:
+        task_instruction = self.env.get_task_instruction()
+        return task_instruction
+
+    def get_action_history(self) -> str:
+        history_context = self.represent_history()
+        return history_context
+
+    def get_decision_query(self, state: State) -> str:
+        query = self.env.get_query_prompt(state, side_info=None)
+        return query
+
+    def reset(self):
+        super().reset()
+        self.oracle_agent.reset()
 
 
 class LLMMABAgentSH(LLMMABAgent, SummaryHistoryFunc):
@@ -285,9 +361,22 @@ class LLMCBAgentRH(LLMCBAgent, CBRawHistoryFunc):
     ...
 
 
-class MABAlgorithmGuideWithSummaryHistory(HistoryFunc):
+class OracleLLMMAbAgentSH(OracleLLMMABAgent, SummaryHistoryFunc):
+    ...
+
+
+class OracleLLMMAbAgentRH(OracleLLMMABAgent, MABRawHistoryFunc):
+    ...
+
+
+class OracleLLMCBAgentRH(OracleLLMCBAgent, CBRawHistoryFunc):
+    ...
+
+
+class MABSummaryHistoryFuncWithAlgorithmGuide(SummaryHistoryFunc):
     """Provides algorithm guidance text for LLM prompt."""
     ag: UCBGuide
+    ag_info_history: List[List[ActionInfo]]  # storing side information
 
     def __init__(self, ag: UCBGuide, history_context_len: int):
         super().__init__(history_context_len)
@@ -298,6 +387,9 @@ class MABAlgorithmGuideWithSummaryHistory(HistoryFunc):
         """Enhance update to include algorithm guide updates."""
         # First call the parent class's update
         self.ag.agent.update(action, reward, info)
+
+    def update_info_history(self, action_info: List[ActionInfo]) -> None:
+        self.ag_info_history.append(action_info)
 
     def reset(self):
         super().reset()  # HistoryFunc.reset()
@@ -333,7 +425,7 @@ class MABAlgorithmGuideWithSummaryHistory(HistoryFunc):
         return snippet
 
 
-class CBAlgorithmGuideWithRawHistory(HistoryFunc):
+class CBRawHistoryFuncWithAlgorithmGuide(CBRawHistoryFunc):
     """Provides algorithm guidance text for LLM prompt."""
     ag: LinUCBGuide
     ag_info_history: List[List[ActionInfo]]  # storing side information
@@ -373,7 +465,7 @@ class CBAlgorithmGuideWithRawHistory(HistoryFunc):
                 # snippet += '\n' + action_names[i].split(") (")[0] + ")" + ": " + action_info.to_str()
 
                 # JSON-like format used in the paper
-                snippet += '\n{\"' + action_names[i].split(") (")[0] + ")\"" + ": " + action_info.to_str(
+                snippet += '\n{\"' + action_names[i] + ": " + action_info.to_str(
                     json_fmt=True) + "}"
             snippet += f"\nAction: {exp.mapped_action_name}"
             snippet += f"\nReward: {exp.reward}\n"
@@ -381,7 +473,7 @@ class CBAlgorithmGuideWithRawHistory(HistoryFunc):
         return snippet
 
 
-class LLMMABAgentSHWithAG(LLMMABAgent, LLM, MABAlgorithmGuideWithSummaryHistory):
+class LLMMABAgentSHWithAG(LLMMABAgent, LLM, MABSummaryHistoryFuncWithAlgorithmGuide):
     def __init__(self, env: VerbalBandit,
                  ag: UCBGuide,
                  model: str = "gpt-3.5-turbo",
@@ -389,13 +481,14 @@ class LLMMABAgentSHWithAG(LLMMABAgent, LLM, MABAlgorithmGuideWithSummaryHistory)
                  verbose=False):
         MABAgent.__init__(self, env)
         LLM.__init__(self, model)
-        MABAlgorithmGuideWithSummaryHistory.__init__(self, ag,
-                                                     history_context_len)
+        MABSummaryHistoryFuncWithAlgorithmGuide.__init__(self, ag,
+                                                         history_context_len)
         self.verbose = verbose
 
     def update(self, action: int, reward: float, info: Dict[str, Any]) -> None:
         # note that we don't have access to the expected reward on the agent side
         super().update(action, reward, info)
+        self.update_info_history(self.ag.get_actions_guide_info())
         self.update_algorithm_guide(action, reward, info)
 
     def reset(self):
@@ -403,7 +496,7 @@ class LLMMABAgentSHWithAG(LLMMABAgent, LLM, MABAlgorithmGuideWithSummaryHistory)
         self.ag.agent.reset()
 
 
-class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBAlgorithmGuideWithRawHistory):
+class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBRawHistoryFuncWithAlgorithmGuide):
     def __init__(self, env: VerbalBandit,
                  ag: LinUCBGuide,
                  model: str = "gpt-3.5-turbo",
@@ -411,8 +504,8 @@ class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBAlgorithmGuideWithRawHistory):
                  verbose=False):
         MABAgent.__init__(self, env)
         LLM.__init__(self, model)
-        CBAlgorithmGuideWithRawHistory.__init__(self, ag,
-                                                history_context_len)
+        CBRawHistoryFuncWithAlgorithmGuide.__init__(self, ag,
+                                                    history_context_len)
         self.verbose = verbose
 
     def update(self, state: State, action: int, reward: float, info: Dict[str, Any]) -> None:
@@ -441,7 +534,7 @@ class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBAlgorithmGuideWithRawHistory):
             # snippet += '\n' + action_names[i].split(") (")[0] + ")" + ": " + action_info.to_str()
 
             # JSON-like format used in the paper
-            snippet += '\n{\"' + self.env.action_names[i].split(") (")[0] + ")\"" + ": " + action_info.to_str(
+            snippet += '\n{\"' + self.env.action_names[i] + ": " + action_info.to_str(
                 json_fmt=True) + "}"
         snippet += '\n'
 
@@ -449,3 +542,73 @@ class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBAlgorithmGuideWithRawHistory):
 
         response = self.generate(task_instruction + history_context + query)
         return response
+
+
+class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, MABSummaryHistoryFuncWithAlgorithmGuide):
+    def __init__(self, env: VerbalBandit,
+                 ag: UCBGuide,
+                 oracle_agent: MABAgent,
+                 model: str = "gpt-3.5-turbo",
+                 history_context_len=1000,
+                 verbose=False):
+        OracleLLMMABAgent.__init__(self, env, oracle_agent, model, history_context_len, verbose)
+        LLM.__init__(self, model)
+        MABSummaryHistoryFuncWithAlgorithmGuide.__init__(self, ag,
+                                                         history_context_len)
+
+    def update(self, action: int, reward: float, info: Dict[str, Any]) -> None:
+        # note that we don't have access to the expected reward on the agent side
+        assert 'interaction' in info
+        assert type(info['interaction']) is mab.VerbalInteraction
+        self.interaction_history.append(info['interaction'])
+        self.oracle_agent.update(action, reward, info)
+        self.update_info_history(self.ag.get_actions_guide_info())
+        self.update_algorithm_guide(action, reward, info)
+
+    def reset(self):
+        super().reset()
+        self.oracle_agent.reset()
+        self.ag.agent.reset()
+
+
+class OracleLLMCBAgentRHWithAG(OracleLLMCBAgent, LLM, CBRawHistoryFuncWithAlgorithmGuide):
+    def __init__(self, env: VerbalBandit,
+                 ag: LinUCBGuide,
+                 oracle_agent: CBAgent,
+                 model: str = "gpt-3.5-turbo",
+                 history_context_len=1000,
+                 verbose=False):
+        OracleLLMCBAgent.__init__(self, env, oracle_agent, model, history_context_len, verbose)
+        LLM.__init__(self, model)
+        CBRawHistoryFuncWithAlgorithmGuide.__init__(self, ag,
+                                                    history_context_len)
+
+    def update(self, state: State, action: int, reward: float, info: Dict[str, Any]) -> None:
+        assert 'interaction' in info
+        assert type(info['interaction']) is cb.VerbalInteraction
+        self.interaction_history.append(info['interaction'])
+        self.oracle_agent.update(state, action, reward, info)
+        self.update_info_history(self.ag.get_state_actions_guide_info(state))
+        self.update_algorithm_guide(state, action, reward, info)
+
+    def reset(self):
+        super().reset()
+        self.oracle_agent.reset()
+        self.ag_info_history = []
+        self.ag.agent.reset()
+
+    def get_decision_query(self, state: State) -> str:
+        # this is the only thing that challenges with side_info, for the current step
+        ag_info = self.ag.get_state_actions_guide_info(state)
+        snippet = ""
+        for i, action_info in enumerate(ag_info):
+            # normal format
+            # snippet += '\n' + action_names[i].split(") (")[0] + ")" + ": " + action_info.to_str()
+
+            # JSON-like format used in the paper
+            snippet += '\n{\"' + self.env.action_names[i] + ": " + action_info.to_str(
+                json_fmt=True) + "}"
+        snippet += '\n'
+
+        query = self.env.get_query_prompt(state, side_info=snippet)
+        return query

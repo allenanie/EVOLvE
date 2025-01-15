@@ -1,5 +1,6 @@
 import numpy as np
 from banditbench.tasks.typing import State
+from banditbench.tasks.cb.movielens import MovieLens, MovieLensVerbal
 
 def test_save_state():
     print()
@@ -12,6 +13,24 @@ def test_save_state():
 
 test_save_state()
 
+env = None
+verbal_env = None
 
-def test_verbal_mapping():
-    print()
+
+def init_cb_env():
+    global env
+    global verbal_env
+
+    if env is None:
+        env = MovieLens('100k-ratings', num_arms=5, horizon=200, rank_k=5, mode='train',
+                        save_data_dir='./tensorflow_datasets/')
+    if verbal_env is None:
+        verbal_env = MovieLensVerbal(env)
+
+
+def test_action_name():
+    init_cb_env()
+
+    state, info = verbal_env.reset()
+    new_state, reward, _, info = verbal_env.step(state, 'Star Wars (1977) (Action|Adventure|Romance|Sci-Fi|War)')
+    assert info['interaction'].is_random is False

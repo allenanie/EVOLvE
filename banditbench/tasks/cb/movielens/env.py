@@ -199,7 +199,9 @@ class MovieLensVerbal(VerbalBandit):
 
     @property
     def action_names(self) -> List[str]:
-        return self.bandit_scenario.action_names
+        # we actually remove genre information when we provide them to the user
+        # .split(") (")[0] + ")\""
+        return self.get_actions_text(genre=False)
 
     def step(self, state: State, action: Action) -> Tuple[State, float, bool, Dict[str, Any]]:
         """
@@ -222,10 +224,10 @@ class MovieLensVerbal(VerbalBandit):
         text = self.verbalize_state(obs)
         obs.feature_text = text
 
-        feedback = self.verbalize_feedback(self.action_names[action_id].split(") (")[0] + ')', reward)
+        feedback = self.verbalize_feedback(self.action_names[action_id], reward)
 
         interaction = VerbalInteraction(state, action, action_id,
-                                        self.action_names[action_id].split(") (")[0] + ')',
+                                        self.action_names[action_id],
                                         self.core_bandit.reward_fn(state, action_id),
                                         feedback,
                                         is_random)

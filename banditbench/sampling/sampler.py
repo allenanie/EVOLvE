@@ -17,21 +17,35 @@ DatasetBuffer has 3 components:
  - VerbalPrompts: The prompt, task description that was sent into LLM to get the label (For LLM agent, and oracleLLM agent) (these are also not exposed)
 """
 
-class DatasetBuffer(list):
-    def __init__(self, trajectories=None, action_infos=None):
-        super().__init__(trajectories or [])
-        self.action_infos = action_infos or []
-        self.verbal_prompts = []
 
-    def add(self, trajectory: Trajectory, action_info: Union[List[List[ActionInfo]], None] = None):
-        # action_info: [Traject_length, Num_Action]
-        self.append(trajectory)
+class DatasetBuffer:
+    def __init__(self, trajectories=None, action_infos=None, verbal_prompts=None):
+        self.trajectories = trajectories or []
+        self.action_infos = action_infos or []
+        self.verbal_prompts = verbal_prompts or []
+
+    def append(self, trajectory: Trajectory, action_info: Union[List[List[ActionInfo]], None] = None,
+               verbal_prompt: Union[str, None] = None):
+        self.trajectories.append(trajectory)
         if action_info is not None:
             self.action_infos.append(action_info)
+        if verbal_prompt is not None:
+            self.verbal_prompts.append(verbal_prompt)
+
+    def add(self, trajectory: Trajectory, action_info: Union[List[List[ActionInfo]], None] = None,
+            verbal_prompt: Union[str, None] = None):
+        self.append(trajectory, action_info, verbal_prompt)
 
     def clear(self):
-        super().clear()
+        self.trajectories.clear()
         self.action_infos.clear()
+        self.verbal_prompts.clear()
+
+    def __len__(self):
+        return len(self.trajectories)
+
+    def __getitem__(self, idx):
+        return self.trajectories[idx]
 
     def __str__(self):
         return f"DatasetBuffer({len(self)} trajectories)"
@@ -42,10 +56,14 @@ class DatasetBuffer(list):
     def __add__(self, other):
         if isinstance(other, DatasetBuffer):
             result = DatasetBuffer()
-            result.extend(self)
-            result.extend(other)
-            result.action_infos.extend(self.action_infos)
-            result.action_infos.extend(other.action_infos)
+            result.trajectories.extend(self.trajectories)
+            result.trajectories.extend(other.trajectories)
+            if self.action_infos and other.action_infos:
+                result.action_infos.extend(self.action_infos)
+                result.action_infos.extend(other.action_infos)
+            if self.verbal_prompts and other.verbal_prompts:
+                result.verbal_prompts.extend(self.verbal_prompts)
+                result.verbal_prompts.extend(other.verbal_prompts)
             return result
         else:
             raise ValueError(f"Unsupported type: {type(other)}")
@@ -60,14 +78,19 @@ class DatasetBuffer(list):
         data = {
             'n_trajectories': len(self),
             'trajectories': [
-                traj.model_dump() for traj in self
-            ],
-            'action_infos': [
-                [[info.model_dump() for info in action_infos] 
+                traj.model_dump() for traj in self.trajectories
+            ]
+        }
+
+        if self.action_infos:
+            data['action_infos'] = [
+                [[info.model_dump() for info in action_infos]
                  for action_infos in interaction_infos]
                 for interaction_infos in self.action_infos
-            ] if self.action_infos else []
-        }
+            ]
+
+        if self.verbal_prompts:
+            data['verbal_prompts'] = self.verbal_prompts
 
         with open(filepath, 'w') as f:
             json.dump(data, f)
@@ -75,37 +98,28 @@ class DatasetBuffer(list):
     @classmethod
     def load(cls, filepath: str) -> 'DatasetBuffer':
         """Load a dataset buffer from a JSON file."""
-        buffer = cls()
-
         with open(filepath, 'r') as f:
             data = json.load(f)
 
-        for traj_data in data['trajectories']:
-            traj = Trajectory.model_validate(traj_data)
-            buffer.append(traj)
+        trajectories = [Trajectory.model_validate(traj_data) for traj_data in data['trajectories']]
+        buffer = cls(trajectories=trajectories)
 
         if 'action_infos' in data and data['action_infos']:
-            for interaction_infos in data['action_infos']:
-                buffer.action_infos.append([
+            buffer.action_infos = [
+                [
                     [ActionInfo.model_validate(info) for info in action_infos]
                     for action_infos in interaction_infos
-                ])
+                ]
+                for interaction_infos in data['action_infos']
+            ]
+
+        if 'verbal_prompts' in data:
+            buffer.verbal_prompts = data['verbal_prompts']
 
         return buffer
 
     def save(self, file):
         self.dump(file)
-
-    def to_sft_format(self):
-        # The SFT format is a lossy format that only stores strings
-        # It's a list of dictionary  [{'task_description': "", 'action_history': "", 'label': ""}]
-        # where `label` is the action taken by the agent
-        # If there is side ag information, it would be present in the prompt
-        # prompt includes history of interations
-        pass
-
-    def save_sft_format(self):
-        pass
 
     def plot_performance(self, title=None):
         # plot the mean performance over all trajectories stored in the dataset
@@ -217,3 +231,11 @@ class DataCollectWithAGInfo:
             trajectories_collected += 1
 
         return buffer
+
+
+class DataCollectWithLLMAgent:
+    """This is a mixin for LLMAgent. LLM agent exposes an API for prompts. Note we store the mapped_action from the environment,
+    not the direct output from the model."""
+
+    def collect(self, env, n_trajectories=1000) -> DatasetBuffer:
+        pass
