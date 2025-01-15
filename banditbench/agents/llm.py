@@ -248,13 +248,21 @@ class FewShot:
 
     This is a passthrough class.
     It augments the original agent's behavior with few-shot examples.
+
+    We use class variables to help applying the same config to different agents without reprocessing
     """
 
-    @staticmethod
-    def empower(agent: Union[LLMMABAgent, LLMCBAgent],
+    data_buffer: Optional[DatasetBuffer] = None
+    filename: Optional[str] = None
+    num_examples: int = 5
+    skip_first: int = 2
+    sample_freq: int = 5
+
+    @classmethod
+    def empower(cls, agent: Union[LLMMABAgent, LLMCBAgent],
                 filename: Optional[str] = None,
-                num_examples: int = 5,
-                skip_first: int = 2,
+                num_examples: Optional[int] = None,
+                skip_first: Optional[int] = None,
                 sample_freq: int = 5) -> Union[LLMMABAgent, LLMCBAgent]:
         """
         This is the general "compilation" function that takes in the agent
@@ -263,28 +271,40 @@ class FewShot:
         :param num_examples: The total number of examples in context
         :param sample_freq: For each trajectory, the number of improvement steps are between each example
         """
-        agent.fewshot_filename = filename
-        agent.skip_first = skip_first
-        agent.sample_freq = sample_freq
-        agent.num_examples = num_examples
-
         if filename is not None:
-            agent.data_buffer = DatasetBuffer.load(filename)
+            cls.filename = filename
+        if num_examples is not None:
+            cls.num_examples = num_examples
+
+        if skip_first is not None:
+            cls.skip_first = skip_first
+
+        if sample_freq is not None:
+            cls.sample_freq = sample_freq
+
+        if cls.filename is not None:
+            cls.data_buffer = DatasetBuffer.load(cls.filename)
         else:
-            agent.data_buffer = None
+            cls.data_buffer = None
 
         # then determine MAB or CB to load the examples into agent
+        if type(agent) is LLMMABAgent:
+            agent.demos = cls.load_few_shot_mab_examples(agent)
+        elif type(agent) is LLMCBAgent:
+            agent.demos = cls.load_few_shot_cb_examples(agent)
 
-    @staticmethod
-    def load_few_shot_mab_examples(agent: Union[LLMMABAgent, LLMCBAgent]) -> str:
+        return agent
+
+    @classmethod
+    def load_few_shot_mab_examples(cls, agent: Union[LLMMABAgent, LLMCBAgent]) -> str:
         """This has to be different """
-        if agent.data_buffer is None:
+        if cls.data_buffer is None:
             return ""
         else:
             fewshot_prompt = agent.env.bandit_scenario.fewshot_prompt
             fewshot_prompt += "========================"
-            start_idx = agent.skip_first
-            examples = agent.data_buffer[start_idx::agent.sample_freq][:agent.num_examples]
+            start_idx = cls.skip_first
+            examples = cls.data_buffer[start_idx::cls.sample_freq][:cls.num_examples]
             for example in examples:
                 fewshot_prompt += example["verbal_prompts"]['action_history'] + "\n\n"
                 # query
@@ -294,16 +314,16 @@ class FewShot:
 
             return fewshot_prompt
 
-    @staticmethod
-    def load_few_shot_cb_examples(agent: Union[LLMMABAgent, LLMCBAgent]) -> str:
+    @classmethod
+    def load_few_shot_cb_examples(cls, agent: Union[LLMMABAgent, LLMCBAgent]) -> str:
         """This has to be different """
-        if agent.data_buffer is None:
+        if cls.data_buffer is None:
             return ""
         else:
             fewshot_prompt = agent.env.bandit_scenario.fewshot_prompt
             fewshot_prompt += "============Example Trajectory============"
-            start_idx = agent.skip_first
-            examples = agent.data_buffer[start_idx::agent.sample_freq][:agent.num_examples]
+            start_idx = cls.skip_first
+            examples = cls.data_buffer[start_idx::cls.sample_freq][:cls.num_examples]
             for example in examples:
                 fewshot_prompt += example["verbal_prompts"]['action_history'] + "\n\n"
                 # query
