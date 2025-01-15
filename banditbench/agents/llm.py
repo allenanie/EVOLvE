@@ -4,12 +4,12 @@ import litellm
 from banditbench.agents.guides import VerbalGuide, UCBGuide, LinUCBGuide, ActionInfo
 from banditbench.tasks.typing import State, Info
 from banditbench.tasks.env import VerbalBandit
-from banditbench.sampling.sampler import DatasetBuffer
+from banditbench.sampling.sampler import DatasetBuffer, DataCollectWithLLMAgent
 
 import banditbench.tasks.cb as cb
 import banditbench.tasks.mab as mab
 
-from banditbench.agents.typing import MABAgent, CBAgent, Agent
+from banditbench.agents.typing import MABAgent, CBAgent
 
 
 class LLM:
@@ -30,9 +30,7 @@ class LLM:
         Returns:
             Generated response text
         """
-        print("Message to LLM")
-        print(message)
-        return "Mock LLM Response"
+        return ""
         # response = litellm.completion(
         #     model=self.model,
         #     messages=[{"content": message, "role": "user"}]
@@ -227,6 +225,18 @@ class LLMMABAgent(MABAgent, LLM, HistoryFunc, MABFewShot):
         super().reset()  # MABAgent.reset()
         self.interaction_history = []
 
+    def get_task_instruction(self) -> str:
+        task_instruction = self.env.get_task_instruction()
+        return task_instruction
+
+    def get_action_history(self) -> str:
+        history_context = self.represent_history()
+        return history_context
+
+    def get_decision_query(self) -> str:
+        query = self.env.get_query_prompt()
+        return query
+
 
 class LLMCBAgent(CBAgent, LLM, HistoryFunc):
     """LLM-based contextual bandit agent."""
@@ -268,8 +278,21 @@ class LLMCBAgent(CBAgent, LLM, HistoryFunc):
         super().reset()  # MABAgent.reset()
         self.interaction_history = []
 
+    def get_task_instruction(self) -> str:
+        task_instruction = self.env.get_task_instruction()
+        return task_instruction
+
+    def get_action_history(self) -> str:
+        history_context = self.represent_history()
+        return history_context
+
+    def get_decision_query(self, state: State) -> str:
+        query = self.env.get_query_prompt(state, side_info=None)
+        return query
+
 
 class OracleLLMMABAgent(LLMMABAgent):
+    """Not a full agent"""
     def __init__(self, env: VerbalBandit, oracle_agent: MABAgent,
                  model: str = "gpt-3.5-turbo", history_context_len=1000, verbose=False):
         """
@@ -291,24 +314,13 @@ class OracleLLMMABAgent(LLMMABAgent):
         self.interaction_history.append(info['interaction'])
         self.oracle_agent.update(action, reward, info)
 
-    def get_task_instruction(self) -> str:
-        task_instruction = self.env.get_task_instruction()
-        return task_instruction
-
-    def get_action_history(self) -> str:
-        history_context = self.represent_history()
-        return history_context
-
-    def get_decision_query(self) -> str:
-        query = self.env.get_query_prompt()
-        return query
-
     def reset(self):
         super().reset()
         self.oracle_agent.reset()
 
 
 class OracleLLMCBAgent(LLMCBAgent):
+    """Not a full agent"""
     def __init__(self, env: VerbalBandit, oracle_agent: CBAgent,
                  model: str = "gpt-3.5-turbo", history_context_len=1000, verbose=False):
         """
@@ -329,47 +341,35 @@ class OracleLLMCBAgent(LLMCBAgent):
         self.interaction_history.append(info['interaction'])
         self.oracle_agent.update(state, action, reward, info)
 
-    def get_task_instruction(self) -> str:
-        task_instruction = self.env.get_task_instruction()
-        return task_instruction
-
-    def get_action_history(self) -> str:
-        history_context = self.represent_history()
-        return history_context
-
-    def get_decision_query(self, state: State) -> str:
-        query = self.env.get_query_prompt(state, side_info=None)
-        return query
-
     def reset(self):
         super().reset()
         self.oracle_agent.reset()
 
 
-class LLMMABAgentSH(LLMMABAgent, SummaryHistoryFunc):
+class LLMMABAgentSH(LLMMABAgent, SummaryHistoryFunc, DataCollectWithLLMAgent):
     # MAB SH Agent
     ...
 
 
-class LLMMABAgentRH(LLMMABAgent, MABRawHistoryFunc):
+class LLMMABAgentRH(LLMMABAgent, MABRawHistoryFunc, DataCollectWithLLMAgent):
     # MAB RH Agent
     ...
 
 
-class LLMCBAgentRH(LLMCBAgent, CBRawHistoryFunc):
+class LLMCBAgentRH(LLMCBAgent, CBRawHistoryFunc, DataCollectWithLLMAgent):
     # CB RH Agent
     ...
 
 
-class OracleLLMMAbAgentSH(OracleLLMMABAgent, SummaryHistoryFunc):
+class OracleLLMMAbAgentSH(OracleLLMMABAgent, SummaryHistoryFunc, DataCollectWithLLMAgent):
     ...
 
 
-class OracleLLMMAbAgentRH(OracleLLMMABAgent, MABRawHistoryFunc):
+class OracleLLMMAbAgentRH(OracleLLMMABAgent, MABRawHistoryFunc, DataCollectWithLLMAgent):
     ...
 
 
-class OracleLLMCBAgentRH(OracleLLMCBAgent, CBRawHistoryFunc):
+class OracleLLMCBAgentRH(OracleLLMCBAgent, CBRawHistoryFunc, DataCollectWithLLMAgent):
     ...
 
 
@@ -381,6 +381,7 @@ class MABSummaryHistoryFuncWithAlgorithmGuide(SummaryHistoryFunc):
     def __init__(self, ag: UCBGuide, history_context_len: int):
         super().__init__(history_context_len)
         self.ag = ag
+        self.ag_info_history = []
         assert type(ag) is UCBGuide, "Only UCBGuide works with SummaryHistory -- since the summary is per action level."
 
     def update_algorithm_guide(self, action: int, reward: float, info: Dict[str, Any]) -> None:
@@ -473,7 +474,8 @@ class CBRawHistoryFuncWithAlgorithmGuide(CBRawHistoryFunc):
         return snippet
 
 
-class LLMMABAgentSHWithAG(LLMMABAgent, LLM, MABSummaryHistoryFuncWithAlgorithmGuide):
+class LLMMABAgentSHWithAG(LLMMABAgent, LLM, MABSummaryHistoryFuncWithAlgorithmGuide,
+                          DataCollectWithLLMAgent):
     def __init__(self, env: VerbalBandit,
                  ag: UCBGuide,
                  model: str = "gpt-3.5-turbo",
@@ -496,7 +498,8 @@ class LLMMABAgentSHWithAG(LLMMABAgent, LLM, MABSummaryHistoryFuncWithAlgorithmGu
         self.ag.agent.reset()
 
 
-class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBRawHistoryFuncWithAlgorithmGuide):
+class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBRawHistoryFuncWithAlgorithmGuide,
+                         DataCollectWithLLMAgent):
     def __init__(self, env: VerbalBandit,
                  ag: LinUCBGuide,
                  model: str = "gpt-3.5-turbo",
@@ -544,7 +547,8 @@ class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBRawHistoryFuncWithAlgorithmGuide):
         return response
 
 
-class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, MABSummaryHistoryFuncWithAlgorithmGuide):
+class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, MABSummaryHistoryFuncWithAlgorithmGuide,
+                                DataCollectWithLLMAgent):
     def __init__(self, env: VerbalBandit,
                  ag: UCBGuide,
                  oracle_agent: MABAgent,
@@ -571,7 +575,8 @@ class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, MABSummaryHistoryFuncWit
         self.ag.agent.reset()
 
 
-class OracleLLMCBAgentRHWithAG(OracleLLMCBAgent, LLM, CBRawHistoryFuncWithAlgorithmGuide):
+class OracleLLMCBAgentRHWithAG(OracleLLMCBAgent, LLM, CBRawHistoryFuncWithAlgorithmGuide,
+                               DataCollectWithLLMAgent):
     def __init__(self, env: VerbalBandit,
                  ag: LinUCBGuide,
                  oracle_agent: CBAgent,

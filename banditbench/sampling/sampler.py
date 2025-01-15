@@ -5,6 +5,8 @@ import json
 import numpy as np
 from pathlib import Path
 from typing import Union, Dict, Any, List
+from banditbench.tasks.env import VerbalBandit, Bandit
+from banditbench.tasks.cb import ContextualBandit
 from banditbench.tasks.typing import Trajectory
 from banditbench.agents.typing import Agent, ActionInfo
 
@@ -18,17 +20,39 @@ DatasetBuffer has 3 components:
 """
 
 
+class Data(dict):
+    trajectory: Trajectory
+    ag_info: Union[List[List[ActionInfo]], None]
+    verbal_prompts: Union[Dict[str, str], None]
+
+    def __init__(self, trajectory: Trajectory, action_info: Union[List[List[ActionInfo]], None] = None,
+                 verbal_prompts: Union[Dict[str, str], None] = None):
+        super().__init__()
+        self['trajectory'] = trajectory
+        self['action_info'] = action_info
+        self['verbal_prompts'] = verbal_prompts
+
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(f"'Data' object has no attribute '{name}'")
+
+    def __setattr__(self, name, value):
+        self[name] = value
+
+
 class DatasetBuffer:
-    def __init__(self, trajectories=None, action_infos=None, verbal_prompts=None):
+    def __init__(self, trajectories=None, ag_info=None, verbal_prompts=None):
         self.trajectories = trajectories or []
-        self.action_infos = action_infos or []
+        self.ag_info = ag_info or []
         self.verbal_prompts = verbal_prompts or []
 
     def append(self, trajectory: Trajectory, action_info: Union[List[List[ActionInfo]], None] = None,
                verbal_prompt: Union[str, None] = None):
         self.trajectories.append(trajectory)
         if action_info is not None:
-            self.action_infos.append(action_info)
+            self.ag_info.append(action_info)
         if verbal_prompt is not None:
             self.verbal_prompts.append(verbal_prompt)
 
@@ -38,14 +62,18 @@ class DatasetBuffer:
 
     def clear(self):
         self.trajectories.clear()
-        self.action_infos.clear()
+        self.ag_info.clear()
         self.verbal_prompts.clear()
 
     def __len__(self):
         return len(self.trajectories)
 
     def __getitem__(self, idx):
-        return self.trajectories[idx]
+        return Data(
+            trajectory=self.trajectories[idx],
+            action_info=self.ag_info[idx] if self.ag_info else None,
+            verbal_prompts=self.verbal_prompts[idx] if self.verbal_prompts else None
+        )
 
     def __str__(self):
         return f"DatasetBuffer({len(self)} trajectories)"
@@ -58,9 +86,9 @@ class DatasetBuffer:
             result = DatasetBuffer()
             result.trajectories.extend(self.trajectories)
             result.trajectories.extend(other.trajectories)
-            if self.action_infos and other.action_infos:
-                result.action_infos.extend(self.action_infos)
-                result.action_infos.extend(other.action_infos)
+            if self.ag_info and other.ag_info:
+                result.ag_info.extend(self.ag_info)
+                result.ag_info.extend(other.ag_info)
             if self.verbal_prompts and other.verbal_prompts:
                 result.verbal_prompts.extend(self.verbal_prompts)
                 result.verbal_prompts.extend(other.verbal_prompts)
@@ -82,11 +110,11 @@ class DatasetBuffer:
             ]
         }
 
-        if self.action_infos:
-            data['action_infos'] = [
+        if self.ag_info:
+            data['ag_info'] = [
                 [[info.model_dump() for info in action_infos]
                  for action_infos in interaction_infos]
-                for interaction_infos in self.action_infos
+                for interaction_infos in self.ag_info
             ]
 
         if self.verbal_prompts:
@@ -104,13 +132,13 @@ class DatasetBuffer:
         trajectories = [Trajectory.model_validate(traj_data) for traj_data in data['trajectories']]
         buffer = cls(trajectories=trajectories)
 
-        if 'action_infos' in data and data['action_infos']:
+        if 'ag_info' in data and data['ag_info']:
             buffer.action_infos = [
                 [
                     [ActionInfo.model_validate(info) for info in action_infos]
                     for action_infos in interaction_infos
                 ]
-                for interaction_infos in data['action_infos']
+                for interaction_infos in data['ag_info']
             ]
 
         if 'verbal_prompts' in data:
@@ -135,7 +163,7 @@ class DatasetBuffer:
 
 class DataCollect:
 
-    def collect(self, env, n_trajectories=1000) -> DatasetBuffer:
+    def collect(self, env: Union[Bandit, ContextualBandit], n_trajectories=1000) -> DatasetBuffer:
         """Collect interactions from environment and store in buffer.
         
         Args:
@@ -180,10 +208,10 @@ class DataCollect:
         return buffer
 
 
-class DataCollectWithAGInfo:
-    # this is the mixin for VerbalGuideAgent
+class DataCollectWithAG:
+    # Using AG to collect data will produce trajectory AND fill in side-info for each action
 
-    def collect(self, env, n_trajectories=1000) -> DatasetBuffer:
+    def collect(self, env: Union[Bandit, ContextualBandit], n_trajectories=1000) -> DatasetBuffer:
         # AG has an underlying agent
         # but also provides utility class to load in action info
         # we need to both get the interaction from the underlying agent
@@ -234,8 +262,76 @@ class DataCollectWithAGInfo:
 
 
 class DataCollectWithLLMAgent:
-    """This is a mixin for LLMAgent. LLM agent exposes an API for prompts. Note we store the mapped_action from the environment,
-    not the direct output from the model."""
+    # Using LLMAgent to collect data will produce trajectory, fill in side-info for each action (optional), AND fill in verbal prompt
+    # will fill in side-info only if `ag` is in the LLM Agent
 
-    def collect(self, env, n_trajectories=1000) -> DatasetBuffer:
-        pass
+    def collect(self, env: VerbalBandit, n_trajectories=1000) -> DatasetBuffer:
+        is_contextual = hasattr(env.core_bandit, 'feature_dim')
+
+        buffer = DatasetBuffer()
+
+        trajectories_collected = 0
+        while trajectories_collected < n_trajectories:
+            trajectory = []
+            ag_info = []
+            verbal_prompts = []
+
+            self.reset()
+
+            if is_contextual:
+                # Contextual bandit case
+                state, _ = env.reset()
+                done = False
+                while not done:
+                    # Get verbal prompts for this step
+                    task_instruction = self.get_task_instruction()
+                    action_history = self.get_action_history()
+                    decision_query = self.get_decision_query(state)
+                    verbal_prompts.append({
+                        'task_instruction': task_instruction,
+                        'action_history': action_history,
+                        'decision_query': decision_query
+                    })
+
+                    action_verbal = self.act(state)
+                    new_state, reward, done, info = env.step(state, action_verbal)
+                    if hasattr(self, 'ag'):
+                        action_info = self.ag.get_state_actions_guide_info(state)
+                        ag_info.append(action_info)
+
+                    trajectory.append(info['interaction'])
+                    action = info['interaction'].mapped_action
+
+                    self.update(state, action, reward, info)
+                    state = new_state
+            else:
+                # Multi-armed bandit case
+                env.reset()
+                done = False
+                while not done:
+                    # Get verbal prompts for this step
+                    task_instruction = self.get_task_instruction()
+                    action_history = self.get_action_history()
+                    decision_query = self.get_decision_query()
+                    verbal_prompts.append({
+                        'task_instruction': task_instruction,
+                        'action_history': action_history,
+                        'decision_query': decision_query
+                    })
+
+                    action_verbal = self.act()
+                    _, reward, done, info = env.step(action_verbal)
+                    if hasattr(self, 'ag'):
+                        action_info = self.ag.get_actions_guide_info()
+                        ag_info.append(action_info)
+
+                    trajectory.append(info['interaction'])
+
+                    action = info['interaction'].mapped_action
+
+                    self.update(action, reward, info)
+
+            buffer.add(Trajectory(trajectory), ag_info if hasattr(self, 'ag') else None, verbal_prompts)
+            trajectories_collected += 1
+
+        return buffer

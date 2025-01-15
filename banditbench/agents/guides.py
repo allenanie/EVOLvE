@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from banditbench.agents.classics import MABAgent, CBAgent, UCBAgent, ThompsonSamplingAgent, GreedyAgent, LinUCBAgent
 from banditbench.tasks.cb.env import State
 from banditbench.agents.typing import ActionInfo, ActionInfoField
-from banditbench.sampling.sampler import DataCollectWithAGInfo
+from banditbench.sampling.sampler import DataCollectWithAG
 
 class VerbalGuide:
     # VerbalGuide can be retrieved in two ways:
@@ -29,7 +29,7 @@ class VerbalGuide:
         raise NotImplementedError("Only for RL and CB agents")
 
 
-class UCBGuide(VerbalGuide, DataCollectWithAGInfo):
+class UCBGuide(VerbalGuide, DataCollectWithAG):
     # takes in UCBAgent and then return info on each arm (a block of text)
     def __init__(self, agent: UCBAgent):
         super().__init__(agent)
@@ -52,7 +52,7 @@ class UCBGuide(VerbalGuide, DataCollectWithAGInfo):
         return exp_bonus_guide + exp_value_guide
 
 
-class GreedyGuide(VerbalGuide, DataCollectWithAGInfo):
+class GreedyGuide(VerbalGuide, DataCollectWithAG):
     def __init__(self, agent: GreedyAgent):
         super().__init__(agent)
 
@@ -70,7 +70,7 @@ class GreedyGuide(VerbalGuide, DataCollectWithAGInfo):
         return arm_info
 
 
-class ThompsonSamplingGuide(VerbalGuide, DataCollectWithAGInfo):
+class ThompsonSamplingGuide(VerbalGuide, DataCollectWithAG):
     def __init__(self, agent: ThompsonSamplingAgent):
         super().__init__(agent)
 
@@ -95,7 +95,7 @@ class ThompsonSamplingGuide(VerbalGuide, DataCollectWithAGInfo):
         return alpha_guide + beta_guide + probability_guide
 
 
-class LinUCBGuide(VerbalGuide, DataCollectWithAGInfo):
+class LinUCBGuide(VerbalGuide, DataCollectWithAG):
     def __init__(self, agent: LinUCBAgent):
         super().__init__(agent)
 

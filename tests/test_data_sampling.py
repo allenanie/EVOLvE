@@ -6,12 +6,16 @@ import pytest
 from banditbench.sampling.sampler import DatasetBuffer, Trajectory
 from banditbench.tasks.mab import BernoulliBandit, VerbalMultiArmedBandit
 
-from banditbench.agents.classics import UCBAgent
-from banditbench.agents.guides import UCBGuide
+from banditbench.agents.classics import UCBAgent, LinUCBAgent
+from banditbench.agents.llm import (LLMMABAgentRH, LLMMABAgentSH, LLMCBAgentRH, LLMCBAgentRHWithAG, LLMMABAgentSHWithAG,
+                                    OracleLLMCBAgentRH, OracleLLMCBAgentRHWithAG, OracleLLMMAbAgentSH,
+                                    OracleLLMMAbAgentRH, OracleLLMMABAgentSHWithAG)
+from banditbench.agents.guides import UCBGuide, LinUCBGuide
 
 from banditbench.tasks.mab.env import Interaction as MABInteraction, VerbalInteraction as MABVerbalInteraction
 from banditbench.tasks.cb.env import Interaction as CBInteraction, VerbalInteraction as CBVerbalInteraction
 
+from banditbench.tasks.cb.movielens import MovieLens, MovieLensVerbal
 
 @pytest.fixture
 def temp_files():
@@ -91,6 +95,7 @@ def test_multiple_trajectories(temp_files):
         assert isinstance(traj[0], MABVerbalInteraction)
         assert isinstance(traj[1], MABVerbalInteraction)
 
+
 def test_databuffer_slicing():
     core_bandit = BernoulliBandit(2, 10, [0.5, 0.2], 123)
     verbal_bandit = VerbalMultiArmedBandit(core_bandit, "VideoWatching")
@@ -122,6 +127,7 @@ def test_databuffer_slicing():
     assert sliced_buffer[0] == buffer[0]
     assert sliced_buffer[1] == buffer[2]
 
+
 def test_mab_sampling():
     core_bandit = BernoulliBandit(2, 200, [0.2, 0.5], 123)
 
@@ -129,6 +135,7 @@ def test_mab_sampling():
     dataset = agent.collect(core_bandit, 100)
     assert len(dataset) == 100
     dataset.plot_performance()
+
 
 def test_mab_ag_sampling(temp_files):
     core_bandit = BernoulliBandit(2, 200, [0.2, 0.5], 123)
@@ -150,3 +157,123 @@ def test_mab_ag_sampling(temp_files):
     loaded_buffer = DatasetBuffer.load(temp_file.name)
 
     assert len(loaded_buffer) == 20
+
+env = None
+verbal_env = None
+
+
+def init_cb_env():
+    global env
+    global verbal_env
+
+    if env is None:
+        env = MovieLens('100k-ratings', num_arms=5, horizon=10, rank_k=5, mode='train',
+                        save_data_dir='./tensorflow_datasets/')
+    if verbal_env is None:
+        verbal_env = MovieLensVerbal(env)
+
+def test_mab_llm_rh_sampling(temp_files):
+    # Setup environment
+    core_bandit = BernoulliBandit(2, 10, [0.2, 0.5], 123)
+    verbal_bandit = VerbalMultiArmedBandit(core_bandit, "VideoWatching")
+
+    # Test LLMMABAgentRH
+    agent = LLMMABAgentRH(verbal_bandit, "gpt-3.5-turbo", history_context_len=1000)
+    buffer = agent.collect(verbal_bandit, n_trajectories=2)
+    assert len(buffer) == 2
+    assert len(buffer[0].verbal_prompts) == 10
+
+    # Test save/load
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
+    temp_files.append(temp_file.name)
+    temp_file.close()
+    
+    buffer.dump(temp_file.name)
+    loaded_buffer = DatasetBuffer.load(temp_file.name)
+    assert len(loaded_buffer) == 2
+
+
+def test_mab_llm_sh_sampling(temp_files):
+    # Setup environment
+    core_bandit = BernoulliBandit(2, 10, [0.2, 0.5], 123)
+    verbal_bandit = VerbalMultiArmedBandit(core_bandit, "VideoWatching")
+
+    # Test LLMMABAgentSH
+    agent = LLMMABAgentSH(verbal_bandit, "gpt-3.5-turbo", history_context_len=1000)
+    agent.generate = lambda x: ""  # so that the LLM is not triggered
+    buffer = agent.collect(verbal_bandit, n_trajectories=2)
+    assert len(buffer) == 2
+    assert len(buffer[0].verbal_prompts) == 10
+
+    # Test save/load
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
+    temp_files.append(temp_file.name)
+    temp_file.close()
+    
+    buffer.dump(temp_file.name)
+    loaded_buffer = DatasetBuffer.load(temp_file.name)
+    assert len(loaded_buffer) == 2
+
+
+def test_cb_llm_rh_sampling(temp_files):
+    # Test LLMCBAgentRH
+    init_cb_env()
+    agent = LLMCBAgentRH(verbal_env, "gpt-3.5-turbo", history_context_len=1000)
+    agent.generate = lambda x: ""  # so that the LLM is not triggered
+    buffer = agent.collect(verbal_env, n_trajectories=2)
+    assert len(buffer) == 2
+    assert len(buffer[0].verbal_prompts) == 10
+
+    # Test save/load
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
+    temp_files.append(temp_file.name)
+    temp_file.close()
+    
+    buffer.dump(temp_file.name)
+    loaded_buffer = DatasetBuffer.load(temp_file.name)
+    assert len(loaded_buffer) == 2
+
+
+def test_cb_llm_rh_with_ag_sampling(temp_files):
+    # Test LLMCBAgentRHWithAG
+    init_cb_env()
+    ucb_guide = LinUCBGuide(LinUCBAgent(env))
+    agent = LLMCBAgentRHWithAG(verbal_env, ucb_guide, "gpt-3.5-turbo", history_context_len=1000)
+    agent.generate = lambda x: ""  # so that the LLM is not triggered
+    buffer = agent.collect(verbal_env, n_trajectories=2)
+    assert len(buffer) == 2
+    assert len(buffer[0].verbal_prompts) == 10
+    assert buffer[0].action_info is not None
+
+    # Test save/load
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
+    temp_files.append(temp_file.name)
+    temp_file.close()
+    
+    buffer.dump(temp_file.name)
+    loaded_buffer = DatasetBuffer.load(temp_file.name)
+    assert len(loaded_buffer) == 2
+
+
+def test_mab_llm_sh_with_ag_sampling(temp_files):
+    # Setup environment
+    core_bandit = BernoulliBandit(2, 10, [0.2, 0.5], 123)
+    verbal_bandit = VerbalMultiArmedBandit(core_bandit, "VideoWatching")
+
+    # Test LLMMABAgentSHWithAG
+    ucb_guide = UCBGuide(UCBAgent(core_bandit))
+    agent = LLMMABAgentSHWithAG(verbal_bandit, ucb_guide, "gpt-3.5-turbo", history_context_len=1000)
+    agent.generate = lambda x: ""  # so that the LLM is not triggered
+    buffer = agent.collect(verbal_bandit, n_trajectories=2)
+    assert len(buffer) == 2
+    assert len(buffer[0].verbal_prompts) == 10
+    assert buffer[0].action_info is not None
+
+    # Test save/load
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
+    temp_files.append(temp_file.name)
+    temp_file.close()
+    
+    buffer.dump(temp_file.name)
+    loaded_buffer = DatasetBuffer.load(temp_file.name)
+    assert len(loaded_buffer) == 2
