@@ -41,6 +41,9 @@ class Data(dict):
     def __setattr__(self, name, value):
         self[name] = value
 
+    def __iter__(self):
+        return iter([self.trajectory, self.action_info, self.verbal_prompts])
+
 
 class DatasetBuffer:
     def __init__(self, trajectories=None, ag_info=None, verbal_prompts=None):
@@ -80,6 +83,14 @@ class DatasetBuffer:
 
     def __repr__(self):
         return str(self)
+    
+    def __iter__(self):
+        for i in range(len(self)):
+            yield Data(
+                trajectory=self.trajectories[i],
+                action_info=self.ag_info[i] if self.ag_info else None,
+                verbal_prompts=self.verbal_prompts[i] if self.verbal_prompts else None
+            )
 
     def __add__(self, other):
         if isinstance(other, DatasetBuffer):
@@ -287,13 +298,14 @@ class DataCollectWithLLMAgent:
                     task_instruction = self.get_task_instruction()
                     action_history = self.get_action_history()
                     decision_query = self.get_decision_query(state)
+
+                    action_verbal = self.act(state)
                     verbal_prompts.append({
                         'task_instruction': task_instruction,
                         'action_history': action_history,
-                        'decision_query': decision_query
+                        'decision_query': decision_query,
+                        'label': action_verbal
                     })
-
-                    action_verbal = self.act(state)
                     new_state, reward, done, info = env.step(state, action_verbal)
                     if hasattr(self, 'ag'):
                         action_info = self.ag.get_state_actions_guide_info(state)
@@ -313,13 +325,15 @@ class DataCollectWithLLMAgent:
                     task_instruction = self.get_task_instruction()
                     action_history = self.get_action_history()
                     decision_query = self.get_decision_query()
+
+                    action_verbal = self.act()
+
                     verbal_prompts.append({
                         'task_instruction': task_instruction,
                         'action_history': action_history,
-                        'decision_query': decision_query
+                        'decision_query': decision_query,
+                        'label': action_verbal
                     })
-
-                    action_verbal = self.act()
                     _, reward, done, info = env.step(action_verbal)
                     if hasattr(self, 'ag'):
                         action_info = self.ag.get_actions_guide_info()

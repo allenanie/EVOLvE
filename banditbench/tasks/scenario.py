@@ -23,9 +23,10 @@ class BanditScenario:
     query_prompt: str = ("\n\nWhich {unit} will you choose next? PLEASE RESPOND ONLY WITH {choices} AND NO TEXT "
                          "EXPLANATION.")
 
-    num_fewshot: int
-    fewshot_examples: str
-    few_shot_config: Optional[BanditConfig]
+    fewshot_prompt: str = (
+                "Here are some examples of optimal actions under different scenarios."
+                " Use them as hints to help you come up with better actions.\n"
+            )
 
     def __init__(self, num_actions: int,
                  action_names: List[str], action_unit: str,

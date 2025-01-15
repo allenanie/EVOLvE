@@ -125,70 +125,11 @@ class SummaryHistoryFunc(HistoryFunc):
         return snippet
 
 
-class FewShot:
-    data_buffer: Optional[DatasetBuffer]
-    fewshot_filename: Optional[str]
-    sample_freq: int
-    num_examples: int
-    skip_first: int
-
-    env: VerbalBandit
-
-    def __init__(self, filename: Optional[str] = None,
-                 num_examples: int = 5,
-                 skip_first: int = 2,
-                 sample_freq: int = 5):
-        """
-        :param skip_first: skip the first few examples (because the decision might not be very complex)
-        :param num_examples: The total number of examples in context
-        :param sample_freq: For each trajectory, the number of improvement steps are between each example
-        """
-        self.fewshot_filename = filename
-        self.skip_first = skip_first
-        self.sample_freq = sample_freq
-        self.num_examples = num_examples
-
-        if filename is not None:
-            self.data_buffer = DatasetBuffer.load(filename)
-        else:
-            self.data_buffer = None
-
-
-# We separate into MABFewShot and CBFewShot because the few-shot template
-# is slightly different
-# But fundamentally, FewShot module should be able to load ANY FewShot examples from any domain
-class MABFewShot(FewShot):
-
-    def load_few_shot_examples(self) -> str:
-        if self.data_buffer is None:
-            return ""
-        else:
-            fewshot_prompt = (
-                "Here are some examples of optimal actions under different scenarios."
-                " Use them as hints to help you come up with better actions.\n"
-            )
-            fewshot_prompt += "========================"
-            start_idx = self.skip_first
-            examples = self.data_buffer[start_idx::self.sample_freq][:self.num_examples]
-            for example in examples:
-                # TODO: write this part (need to assemble the few-shot examples)
-                fewshot_prompt += example["action_history"] + "\n\n"
-                # query
-                fewshot_prompt += self.env.get_query_prompt() + "\n"
-                fewshot_prompt += f"\n{example['label']}\n"
-                fewshot_prompt += "========================"
-
-            return fewshot_prompt
-
-
-class CBFewShot(FewShot):
-    pass
-
-
-class LLMMABAgent(MABAgent, LLM, HistoryFunc, MABFewShot):
+class LLMMABAgent(MABAgent, LLM, HistoryFunc):
     """LLM-based multi-armed bandit agent."""
 
     interaction_history: List[mab.VerbalInteraction]
+    demos: Optional[str]
 
     decision_context_start: str = "So far you have interacted {} times with the following choices and rewards:\n"
 
@@ -199,12 +140,15 @@ class LLMMABAgent(MABAgent, LLM, HistoryFunc, MABFewShot):
         MABAgent.__init__(self, env)
         LLM.__init__(self, model)
         HistoryFunc.__init__(self, history_context_len)
+        self.demos = None  # few-shot demos, not reset, and only specified by FewShot class
         self.verbose = verbose
 
     def act(self) -> str:
         """Generate next action using LLM."""
         # Implement LLM-based action selection
         task_instruction = self.env.get_task_instruction()
+        if self.demos is not None:
+            task_instruction += self.demos
         history_context = self.represent_history()
         query = self.env.get_query_prompt()
 
@@ -242,6 +186,7 @@ class LLMCBAgent(CBAgent, LLM, HistoryFunc):
     """LLM-based contextual bandit agent."""
 
     interaction_history: List[cb.VerbalInteraction]
+    demos: Optional[str]  # few-shot demos, not reset, and only specified by FewShot class
 
     decision_context_start: str = ("So far you have interacted {} times with the most recent following choices and "
                                    "rewards:\n")
@@ -253,12 +198,15 @@ class LLMCBAgent(CBAgent, LLM, HistoryFunc):
         CBAgent.__init__(self, env)
         LLM.__init__(self, model)
         HistoryFunc.__init__(self, history_context_len)
+        self.demos = None
         self.verbose = verbose
 
     def act(self, state: State) -> str:
         """Generate next action using LLM and context."""
         # Implement LLM-based contextual action selection
         task_instruction = self.env.get_task_instruction()
+        if self.demos is not None:
+            task_instruction += self.demos
         history_context = self.represent_history()
         query = self.env.get_query_prompt(state, side_info=None)
 
@@ -291,8 +239,84 @@ class LLMCBAgent(CBAgent, LLM, HistoryFunc):
         return query
 
 
+class FewShot:
+    """
+    Takes in agent, and returns a FewShot agent
+    FewShot.empower(agent, *configs) # becomes a FewShotAgent
+
+    Agent stores the state, not FewShot class
+
+    This is a passthrough class.
+    It augments the original agent's behavior with few-shot examples.
+    """
+
+    @staticmethod
+    def empower(agent: Union[LLMMABAgent, LLMCBAgent],
+                filename: Optional[str] = None,
+                num_examples: int = 5,
+                skip_first: int = 2,
+                sample_freq: int = 5) -> Union[LLMMABAgent, LLMCBAgent]:
+        """
+        This is the general "compilation" function that takes in the agent
+
+        :param skip_first: skip the first few examples (because the decision might not be very complex)
+        :param num_examples: The total number of examples in context
+        :param sample_freq: For each trajectory, the number of improvement steps are between each example
+        """
+        agent.fewshot_filename = filename
+        agent.skip_first = skip_first
+        agent.sample_freq = sample_freq
+        agent.num_examples = num_examples
+
+        if filename is not None:
+            agent.data_buffer = DatasetBuffer.load(filename)
+        else:
+            agent.data_buffer = None
+
+        # then determine MAB or CB to load the examples into agent
+
+    @staticmethod
+    def load_few_shot_mab_examples(agent: Union[LLMMABAgent, LLMCBAgent]) -> str:
+        """This has to be different """
+        if agent.data_buffer is None:
+            return ""
+        else:
+            fewshot_prompt = agent.env.bandit_scenario.fewshot_prompt
+            fewshot_prompt += "========================"
+            start_idx = agent.skip_first
+            examples = agent.data_buffer[start_idx::agent.sample_freq][:agent.num_examples]
+            for example in examples:
+                fewshot_prompt += example["verbal_prompts"]['action_history'] + "\n\n"
+                # query
+                fewshot_prompt += example['verbal_prompts']['decision_query'] + "\n"
+                fewshot_prompt += f"\n{example['verbal_prompts']['label']}\n"
+                fewshot_prompt += "========================"
+
+            return fewshot_prompt
+
+    @staticmethod
+    def load_few_shot_cb_examples(agent: Union[LLMMABAgent, LLMCBAgent]) -> str:
+        """This has to be different """
+        if agent.data_buffer is None:
+            return ""
+        else:
+            fewshot_prompt = agent.env.bandit_scenario.fewshot_prompt
+            fewshot_prompt += "============Example Trajectory============"
+            start_idx = agent.skip_first
+            examples = agent.data_buffer[start_idx::agent.sample_freq][:agent.num_examples]
+            for example in examples:
+                fewshot_prompt += example["verbal_prompts"]['action_history'] + "\n\n"
+                # query
+                fewshot_prompt += example['verbal_prompts']['decision_query'] + "\n"
+                fewshot_prompt += f"\n{example['verbal_prompts']['label']}\n"
+                fewshot_prompt += "=============Example Trajectory==========="
+
+            return fewshot_prompt
+
+
 class OracleLLMMABAgent(LLMMABAgent):
     """Not a full agent"""
+
     def __init__(self, env: VerbalBandit, oracle_agent: MABAgent,
                  model: str = "gpt-3.5-turbo", history_context_len=1000, verbose=False):
         """
@@ -321,6 +345,7 @@ class OracleLLMMABAgent(LLMMABAgent):
 
 class OracleLLMCBAgent(LLMCBAgent):
     """Not a full agent"""
+
     def __init__(self, env: VerbalBandit, oracle_agent: CBAgent,
                  model: str = "gpt-3.5-turbo", history_context_len=1000, verbose=False):
         """

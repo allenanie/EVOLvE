@@ -65,8 +65,11 @@ class MovieLensScenario(ScenarioUtil, CBScenario):
     )
 
     query_prompt = ("\n\nYou have a new user: PLEASE"
-                  " RESPOND ONLY WITH A CHOICE of MOVIES LISTED ABOVE AND NO TEXT"
-                  " EXPLANATION.\n\nContext: {feature}\n")
+                    " RESPOND ONLY WITH A CHOICE of MOVIES LISTED ABOVE AND NO TEXT"
+                    " EXPLANATION.\n\nContext: {feature}\n")
+
+    fewshot_prompt = ('Here are some examples of optimal actions for different users.'
+                      ' Use them as hints to help you come up with better actions.\n')
 
     action_names: List[str]
 
