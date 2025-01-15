@@ -16,7 +16,8 @@ class DatasetBuffer(list):
         super().__init__(trajectories or [])
         self.action_infos = action_infos or []
 
-    def add(self, trajectory: Trajectory, action_info: Union[List[ActionInfo], None] = None):
+    def add(self, trajectory: Trajectory, action_info: Union[List[List[ActionInfo]], None] = None):
+        # action_info: [Traject_length, Num_Action]
         self.append(trajectory)
         if action_info is not None:
             self.action_infos.append(action_info)
@@ -55,8 +56,9 @@ class DatasetBuffer(list):
                 traj.model_dump() for traj in self
             ],
             'action_infos': [
-                [info.model_dump() for info in action_info_list] 
-                for action_info_list in self.action_infos
+                [[info.model_dump() for info in action_infos] 
+                 for action_infos in interaction_infos]
+                for interaction_infos in self.action_infos
             ] if self.action_infos else []
         }
 
@@ -76,9 +78,10 @@ class DatasetBuffer(list):
             buffer.append(traj)
 
         if 'action_infos' in data and data['action_infos']:
-            for action_info_list in data['action_infos']:
+            for interaction_infos in data['action_infos']:
                 buffer.action_infos.append([
-                    ActionInfo.model_validate(info) for info in action_info_list
+                    [ActionInfo.model_validate(info) for info in action_infos]
+                    for action_infos in interaction_infos
                 ])
 
         return buffer
@@ -153,4 +156,46 @@ class DataCollectWithAGInfo:
         # but also provides utility class to load in action info
         # we need to both get the interaction from the underlying agent
         # and collect the action info from the AG
-        pass
+        is_contextual = hasattr(env, 'feature_dim')
+
+        buffer = DatasetBuffer()
+
+        trajectories_collected = 0
+        while trajectories_collected < n_trajectories:
+            trajectory = []
+            ag_info = []
+
+            self.agent.reset()
+
+            if is_contextual:
+                # Contextual bandit case
+                state, _ = env.reset()
+                done = False
+                while not done:
+                    action = self.agent.act(state)
+                    new_state, reward, done, info = env.step(state, action)
+                    action_info = self.get_state_actions_guide_info(state)
+
+                    trajectory.append(info['interaction'])
+                    ag_info.append(action_info)
+
+                    self.agent.update(state, action, reward, info)
+                    state = new_state
+            else:
+                # Multi-armed bandit case
+                env.reset()
+                done = False
+                while not done:
+                    action = self.agent.act()
+                    _, reward, done, info = env.step(action)
+                    action_info = self.get_actions_guide_info()
+
+                    trajectory.append(info['interaction'])
+                    ag_info.append(action_info)
+
+                    self.agent.update(action, reward, info)
+
+            buffer.add(Trajectory(trajectory), ag_info)
+            trajectories_collected += 1
+
+        return buffer

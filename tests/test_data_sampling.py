@@ -7,6 +7,7 @@ from banditbench.sampling.sampler import DatasetBuffer, Trajectory
 from banditbench.tasks.mab import BernoulliBandit, VerbalMultiArmedBandit
 
 from banditbench.agents.classics import UCBAgent
+from banditbench.agents.guides import UCBGuide
 
 from banditbench.tasks.mab.env import Interaction as MABInteraction, VerbalInteraction as MABVerbalInteraction
 from banditbench.tasks.cb.env import Interaction as CBInteraction, VerbalInteraction as CBVerbalInteraction
@@ -129,5 +130,23 @@ def test_mab_sampling():
     assert len(dataset) == 100
     dataset.plot_performance()
 
-def test_mab_ag_sampling():
-    pass
+def test_mab_ag_sampling(temp_files):
+    core_bandit = BernoulliBandit(2, 200, [0.2, 0.5], 123)
+
+    guide = UCBGuide(UCBAgent(core_bandit))
+    dataset = guide.collect(core_bandit, 20)
+    assert len(dataset) == 20
+
+    assert len(dataset.action_infos) == 20
+
+    # the 1st trajectory, 1st interaction, 1st action's info
+    print(dataset.action_infos[0][0][0].to_str())
+
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
+    temp_files.append(temp_file.name)
+    temp_file.close()
+
+    dataset.save(temp_file.name)
+    loaded_buffer = DatasetBuffer.load(temp_file.name)
+
+    assert len(loaded_buffer) == 20

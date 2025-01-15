@@ -37,7 +37,7 @@ class UCBGuide(VerbalGuide, DataCollectWithAGInfo):
     def get_actions_guide_info(self) -> List[ActionInfo]:
         actions_info = []
         for arm in range(self.agent.k_arms):
-            arm_info = self.get_state_action_guide_info(arm)
+            arm_info = self.get_action_guide_info(arm)
             actions_info.append(arm_info)
 
         assert len(actions_info) == self.agent.k_arms
@@ -74,7 +74,7 @@ class ThompsonSamplingGuide(VerbalGuide, DataCollectWithAGInfo):
     def __init__(self, agent: ThompsonSamplingAgent):
         super().__init__(agent)
 
-    def get_guide_info(self) -> List[ActionInfo]:
+    def get_actions_guide_info(self) -> List[ActionInfo]:
         actions_info = []
         for arm in range(self.agent.k_arms):
             arm_info = self.get_action_guide_info(arm)

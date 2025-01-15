@@ -127,6 +127,7 @@ class SummaryHistoryFunc(HistoryFunc):
 
         return snippet
 
+
 class FewShot:
     data_buffer: Optional[DatasetBuffer]
     fewshot_filename: Optional[str]
@@ -155,6 +156,10 @@ class FewShot:
         else:
             self.data_buffer = None
 
+
+# We separate into MABFewShot and CBFewShot because the few-shot template
+# is slightly different
+# But fundamentally, FewShot module should be able to load ANY FewShot examples from any domain
 class MABFewShot(FewShot):
 
     def load_few_shot_examples(self) -> str:
@@ -180,6 +185,7 @@ class MABFewShot(FewShot):
                 fewshot_prompt += "========================"
 
             return fewshot_prompt
+
 
 class CBFewShot(FewShot):
     pass
