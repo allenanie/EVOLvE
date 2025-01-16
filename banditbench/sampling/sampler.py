@@ -8,224 +8,23 @@ from typing import Union, Dict, Any, List
 from banditbench.tasks.env import VerbalBandit, Bandit
 from banditbench.tasks.cb.env import ContextualBandit
 from banditbench.tasks.typing import Trajectory
-from banditbench.agents.typing import Agent, ActionInfo
 
-from banditbench.utils import plot_cumulative_reward
+from banditbench.sampling.typing import DatasetBuffer
 
-"""
-DatasetBuffer has 3 components:
- - Trajectories: List of Trajectory objects (bare minimum) (all agents will have this) (this is just the raw interaction history with the environment)
- - ActionInfos: Additional information at each step of the decision (some agents have them, some don't) (for agent that has them, this is not exposed currently)
- - VerbalPrompts: The prompt, task description that was sent into LLM to get the label (For LLM agent, and oracleLLM agent) (these are also not exposed)
-"""
+import concurrent.futures
+from tqdm import tqdm
 
+from copy import deepcopy
 
-class Data(dict):
-    # this is on the trajectory level -- a single trajectory
-    trajectory: Trajectory
-    ag_info: Union[List[List[ActionInfo]], None]
-    verbal_prompts: Union[List[Dict[str, str]], None]
+class Sample:
 
-    def __init__(self, trajectory: Trajectory, action_info: Union[List[List[ActionInfo]], None] = None,
-                 verbal_prompts: Union[List[Dict[str, str]], None] = None):
-        super().__init__()
-        self['trajectory'] = trajectory
-        self['action_info'] = action_info
-        self['verbal_prompts'] = verbal_prompts
-
-    def __getattr__(self, name):
-        try:
-            return self[name]
-        except KeyError:
-            raise AttributeError(f"'Data' object has no attribute '{name}'")
-
-    def __setattr__(self, name, value):
-        self[name] = value
-
-    def __iter__(self):
-        return iter([self.trajectory, self.action_info, self.verbal_prompts])
-
-
-class DatasetBuffer:
-    # this is on the dataset level -- a dataset of trajectories
-    def __init__(self, trajectories=None, ag_info=None, verbal_prompts=None):
-        self.trajectories = trajectories or []
-        self.ag_info = ag_info or []
-        self.verbal_prompts = verbal_prompts or []
-
-    def append(self, trajectory: Trajectory, action_info: Union[List[List[ActionInfo]], None] = None,
-               verbal_prompt: Union[List[Dict[str, str]], None] = None):
-        self.trajectories.append(trajectory)
-        if action_info is not None:
-            self.ag_info.append(action_info)
-        if verbal_prompt is not None:
-            self.verbal_prompts.append(verbal_prompt)
-
-    def add(self, trajectory: Trajectory, action_info: Union[List[List[ActionInfo]], None] = None,
-            verbal_prompt: Union[List[Dict[str, str]], None] = None):
-        self.append(trajectory, action_info, verbal_prompt)
-
-    def clear(self):
-        self.trajectories.clear()
-        self.ag_info.clear()
-        self.verbal_prompts.clear()
-
-    def __len__(self):
-        return len(self.trajectories)
-
-    def __getitem__(self, idx):
-        if isinstance(idx, slice):
-            # Handle slice indexing
-            trajectories = self.trajectories[idx]
-            ag_info = self.ag_info[idx] if self.ag_info else None
-            verbal_prompts = self.verbal_prompts[idx] if self.verbal_prompts else None
-
-            # Create new buffer with sliced data
-            new_buffer = DatasetBuffer(trajectories, ag_info, verbal_prompts)
-            return new_buffer
-        else:
-            # Handle single index
-            return Data(
-                trajectory=self.trajectories[idx],
-                action_info=self.ag_info[idx] if self.ag_info else None,
-                verbal_prompts=self.verbal_prompts[idx] if self.verbal_prompts else None
-            )
-
-    def __str__(self):
-        return f"DatasetBuffer({len(self)} trajectories)"
-
-    def __repr__(self):
-        return str(self)
-
-    def __iter__(self):
-        for i in range(len(self)):
-            yield Data(
-                trajectory=self.trajectories[i],
-                action_info=self.ag_info[i] if self.ag_info else None,
-                verbal_prompts=self.verbal_prompts[i] if self.verbal_prompts else None
-            )
-
-    def __add__(self, other):
-        if isinstance(other, DatasetBuffer):
-            result = DatasetBuffer()
-            result.trajectories.extend(self.trajectories)
-            result.trajectories.extend(other.trajectories)
-            if self.ag_info and other.ag_info:
-                result.ag_info.extend(self.ag_info)
-                result.ag_info.extend(other.ag_info)
-            if self.verbal_prompts and other.verbal_prompts:
-                result.verbal_prompts.extend(self.verbal_prompts)
-                result.verbal_prompts.extend(other.verbal_prompts)
-            return result
-        else:
-            raise ValueError(f"Unsupported type: {type(other)}")
-
-    def dump(self, file):
-        """Save the dataset buffer to a JSON file."""
-        if isinstance(file, str):
-            filepath = file
-        else:
-            filepath = file.name
-
-        data = {
-            'n_trajectories': len(self),
-            'trajectories': [
-                traj.model_dump() for traj in self.trajectories
-            ]
-        }
-
-        if self.ag_info:
-            data['ag_info'] = [
-                [[info.model_dump() for info in action_infos]
-                 for action_infos in interaction_infos]
-                for interaction_infos in self.ag_info
-            ]
-
-        if self.verbal_prompts:
-            data['verbal_prompts'] = self.verbal_prompts
-
-        with open(filepath, 'w') as f:
-            json.dump(data, f)
-
-    @classmethod
-    def load(cls, filepath: str) -> 'DatasetBuffer':
-        """Load a dataset buffer from a JSON file."""
-        with open(filepath, 'r') as f:
-            data = json.load(f)
-
-        trajectories = [Trajectory.model_validate(traj_data) for traj_data in data['trajectories']]
-        buffer = cls(trajectories=trajectories)
-
-        if 'ag_info' in data and data['ag_info']:
-            buffer.action_infos = [
-                [
-                    [ActionInfo.model_validate(info) for info in action_infos]
-                    for action_infos in interaction_infos
-                ]
-                for interaction_infos in data['ag_info']
-            ]
-
-        if 'verbal_prompts' in data:
-            buffer.verbal_prompts = data['verbal_prompts']
-
-        return buffer
-
-    def save(self, file):
-        self.dump(file)
-
-    def plot_performance(self, title=None):
-        # plot the mean performance over all trajectories stored in the dataset
-        all_rewards = []
-        for trajectory in self:
-            rewards = []
-            for interaction in trajectory:
-                rewards.append(interaction.reward)
-            all_rewards.append(rewards)
-        horizon = len(all_rewards[0])
-        plot_cumulative_reward(all_rewards, horizon, title)
-
-    def to_sft_data(self, file=None):
-        """
-        'task_instruction': task_instruction,
-        'action_history': action_history,
-        'decision_query': decision_query,
-        'label': action_verbal
-        """
-        # [{}]
-        data = []
-        for trajectory_prompts in self.verbal_prompts:
-            traj_prompt = []
-            for i, trajectory_step_prompt in enumerate(trajectory_prompts):
-                traj_prompt.append({'step': i,
-                                    "prompt": trajectory_step_prompt['task_instruction'] + trajectory_step_prompt[
-                                        'action_history'] + trajectory_step_prompt['decision_query'],
-                                    "label": trajectory_step_prompt['label']})
-            data.append(traj_prompt)
-
-        if file:
-            if isinstance(file, str):
-                filepath = file
-            else:
-                filepath = file.name
-
-            with open(filepath, 'w') as f:
-                json.dump(data, f)
-        else:
-            return data
-
-    def save_sft_data(self, file=None):
-        return self.to_sft_data(file)
-
-
-class DataCollect:
-
-    def collect(self, env: Union[Bandit, ContextualBandit], n_trajectories=1000) -> DatasetBuffer:
+    def in_context_learn(self, env: Union[Bandit, ContextualBandit], n_trajs=20) -> DatasetBuffer:
         """Collect interactions from environment and store in buffer.
         
         Args:
             env: The environment to collect from (Verbal or non-verbal)
             agent: Agent to collect data with
-            n_trajectories: Number of self-improving trajectories to collect
+            n_trajs: Number of self-improving trajectories to collect
         """
         # Check if environment is verbal by looking for verbal_info property
         is_verbal = hasattr(env, 'action_names')
@@ -234,7 +33,7 @@ class DataCollect:
         buffer = DatasetBuffer()
 
         trajectories_collected = 0
-        while trajectories_collected < n_trajectories:
+        while trajectories_collected < n_trajs:
             trajectory = []
             self.reset()
 
@@ -264,10 +63,10 @@ class DataCollect:
         return buffer
 
 
-class DataCollectWithAG:
+class SampleWithAG:
     # Using AG to collect data will produce trajectory AND fill in side-info for each action
 
-    def collect(self, env: Union[Bandit, ContextualBandit], n_trajectories=1000) -> DatasetBuffer:
+    def in_context_learn(self, env: Union[Bandit, ContextualBandit], n_trajs=20) -> DatasetBuffer:
         # AG has an underlying agent
         # but also provides utility class to load in action info
         # we need to both get the interaction from the underlying agent
@@ -277,7 +76,7 @@ class DataCollectWithAG:
         buffer = DatasetBuffer()
 
         trajectories_collected = 0
-        while trajectories_collected < n_trajectories:
+        while trajectories_collected < n_trajs:
             trajectory = []
             ag_info = []
 
@@ -316,62 +115,70 @@ class DataCollectWithAG:
 
         return buffer
 
-
-class DataCollectWithLLMAgent:
+class SampleWithLLMAgent:
     # Using LLMAgent to collect data will produce trajectory, fill in side-info for each action (optional), AND fill in verbal prompt
     # will fill in side-info only if `ag` is in the LLM Agent
 
-    def collect(self, env: VerbalBandit, n_trajectories=1000) -> DatasetBuffer:
+    def in_context_learn(self, env: VerbalBandit, n_trajs=20) -> DatasetBuffer:
+        
         is_contextual = hasattr(env.core_bandit, 'feature_dim')
-
         buffer = DatasetBuffer()
 
-        trajectories_collected = 0
-        while trajectories_collected < n_trajectories:
+        def collect_single_trajectory(trial_idx, trial_pbar):
             trajectory = []
             ag_info = []
             verbal_prompts = []
+            
+            # Create a new instance for thread safety
+            env_copy = deepcopy(env)
+            agent_copy = deepcopy(self)
+            agent_copy.reset()
 
-            self.reset()
+            # Set position to ensure proper display of nested progress bars
+            step_pbar = tqdm(total=env_copy.horizon, 
+                            desc=f'Trial {trial_idx+1} steps', 
+                            leave=False,
+                            position=trial_idx + 1)
 
             if is_contextual:
                 # Contextual bandit case
-                state, _ = env.reset()
+                state, _ = env_copy.reset()
                 done = False
                 while not done:
                     # Get verbal prompts for this step
-                    task_instruction = self.get_task_instruction()
-                    action_history = self.get_action_history()
-                    decision_query = self.get_decision_query(state)
+                    task_instruction = agent_copy.get_task_instruction()
+                    action_history = agent_copy.get_action_history()
+                    decision_query = agent_copy.get_decision_query(state)
 
-                    action_verbal = self.act(state)
+                    action_verbal = agent_copy.act(state)
                     verbal_prompts.append({
                         'task_instruction': task_instruction,
                         'action_history': action_history,
                         'decision_query': decision_query,
                         'label': action_verbal
                     })
-                    new_state, reward, done, info = env.step(state, action_verbal)
-                    if hasattr(self, 'ag'):
-                        action_info = self.ag.get_state_actions_guide_info(state)
+                    new_state, reward, done, info = env_copy.step(state, action_verbal)
+                    if hasattr(agent_copy, 'ag'):
+                        action_info = agent_copy.ag.get_state_actions_guide_info(state)
                         ag_info.append(action_info)
 
                     trajectory.append(info['interaction'])
                     action = info['interaction'].mapped_action
 
-                    self.update(state, action, reward, info)
+                    agent_copy.update(state, action, reward, info)
                     state = new_state
+                    step_pbar.update(1)
             else:
-                # Multi-armed bandit case
-                env.reset()
+                # Multi-armed bandit case  
+                env_copy.reset()
                 done = False
                 while not done:
                     # Get verbal prompts for this step
-                    task_instruction = self.get_task_instruction()
-                    action_history = self.get_action_history()
-                    decision_query = self.get_decision_query()
+                    task_instruction = agent_copy.get_task_instruction()
+                    action_history = agent_copy.get_action_history()
+                    decision_query = agent_copy.get_decision_query()
 
-                    action_verbal = self.act()
+                    action_verbal = agent_copy.act()
 
                     verbal_prompts.append({
                         'task_instruction': task_instruction,
@@ -379,18 +186,29 @@ class DataCollectWithLLMAgent:
                         'decision_query': decision_query,
                         'label': action_verbal
                     })
-                    _, reward, done, info = env.step(action_verbal)
-                    if hasattr(self, 'ag'):
-                        action_info = self.ag.get_actions_guide_info()
+                    _, reward, done, info = env_copy.step(action_verbal)
+                    if hasattr(agent_copy, 'ag'):
+                        action_info = agent_copy.ag.get_actions_guide_info()
                         ag_info.append(action_info)
 
                     trajectory.append(info['interaction'])
-
                     action = info['interaction'].mapped_action
 
-                    self.update(action, reward, info)
+                    agent_copy.update(action, reward, info)
+                    step_pbar.update(1)
 
-            buffer.add(Trajectory(trajectory), ag_info if hasattr(self, 'ag') else None, verbal_prompts)
-            trajectories_collected += 1
+            step_pbar.close()
+            trial_pbar.update(1)
+            return Trajectory(trajectory), ag_info if hasattr(agent_copy, 'ag') else None, verbal_prompts
+
+        # Update the main progress bar
+        with tqdm(total=n_trajs, desc="Collecting trajectories", position=0) as trial_pbar:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                futures = [executor.submit(collect_single_trajectory, i, trial_pbar) 
+                          for i in range(n_trajs)]
+                
+                for future in concurrent.futures.as_completed(futures):
+                    trajectory, ag_info, verbal_prompts = future.result()
+                    buffer.add(trajectory, ag_info, verbal_prompts)
 
         return buffer

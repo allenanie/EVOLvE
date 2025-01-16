@@ -21,14 +21,14 @@ class State(BaseModel):
     index: Union[int, None]  # a pointer to the dataset (if there is a dataset)
     info: Info = None  # additional information
 
-    @field_serializer('info')
+    @field_serializer('info', mode='plain')
     def serialize_info(self, info: Info, _info):
         """
         When info cannot be serialized, we return None to avoid triggering error
         """
         return safe_json_encode(info)
 
-    @field_serializer('feature')
+    @field_serializer('feature', mode='plain')
     def serialize_feature(self, feature: Any, _feature):
         """
         We perform an automatic numpy serialization

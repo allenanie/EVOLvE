@@ -4,7 +4,7 @@ import litellm
 from banditbench.agents.guides import VerbalGuide, UCBGuide, LinUCBGuide, ActionInfo
 from banditbench.tasks.typing import State, Info
 from banditbench.tasks.env import VerbalBandit
-from banditbench.sampling.sampler import DataCollectWithLLMAgent
+from banditbench.sampling.sampler import SampleWithLLMAgent
 
 import banditbench.tasks.cb as cb
 import banditbench.tasks.mab as mab
@@ -299,30 +299,30 @@ class OracleLLMCBAgent(LLMCBAgent):
         self.oracle_agent.reset()
 
 
-class LLMMABAgentSH(LLMMABAgent, SummaryHistoryFunc, DataCollectWithLLMAgent):
+class LLMMABAgentSH(LLMMABAgent, SummaryHistoryFunc, SampleWithLLMAgent):
     # MAB SH Agent
     ...
 
 
-class LLMMABAgentRH(LLMMABAgent, MABRawHistoryFunc, DataCollectWithLLMAgent):
+class LLMMABAgentRH(LLMMABAgent, MABRawHistoryFunc, SampleWithLLMAgent):
     # MAB RH Agent
     ...
 
 
-class LLMCBAgentRH(LLMCBAgent, CBRawHistoryFunc, DataCollectWithLLMAgent):
+class LLMCBAgentRH(LLMCBAgent, CBRawHistoryFunc, SampleWithLLMAgent):
     # CB RH Agent
     ...
 
 
-class OracleLLMMABAgentSH(OracleLLMMABAgent, SummaryHistoryFunc, DataCollectWithLLMAgent):
+class OracleLLMMABAgentSH(OracleLLMMABAgent, SummaryHistoryFunc, SampleWithLLMAgent):
     ...
 
 
-class OracleLLMMAbAgentRH(OracleLLMMABAgent, MABRawHistoryFunc, DataCollectWithLLMAgent):
+class OracleLLMMAbAgentRH(OracleLLMMABAgent, MABRawHistoryFunc, SampleWithLLMAgent):
     ...
 
 
-class OracleLLMCBAgentRH(OracleLLMCBAgent, CBRawHistoryFunc, DataCollectWithLLMAgent):
+class OracleLLMCBAgentRH(OracleLLMCBAgent, CBRawHistoryFunc, SampleWithLLMAgent):
     ...
 
 
@@ -428,7 +428,7 @@ class CBRawHistoryFuncWithAlgorithmGuide(CBRawHistoryFunc):
 
 
 class LLMMABAgentSHWithAG(LLMMABAgent, LLM, MABSummaryHistoryFuncWithAlgorithmGuide,
-                          DataCollectWithLLMAgent):
+                          SampleWithLLMAgent):
     def __init__(self, env: VerbalBandit,
                  ag: UCBGuide,
                  model: str = "gpt-3.5-turbo",
@@ -452,7 +452,7 @@ class LLMMABAgentSHWithAG(LLMMABAgent, LLM, MABSummaryHistoryFuncWithAlgorithmGu
 
 
 class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBRawHistoryFuncWithAlgorithmGuide,
-                         DataCollectWithLLMAgent):
+                         SampleWithLLMAgent):
     def __init__(self, env: VerbalBandit,
                  ag: LinUCBGuide,
                  model: str = "gpt-3.5-turbo",
@@ -501,7 +501,7 @@ class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBRawHistoryFuncWithAlgorithmGuide,
 
 
 class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, MABSummaryHistoryFuncWithAlgorithmGuide,
-                                DataCollectWithLLMAgent):
+                                SampleWithLLMAgent):
     def __init__(self, env: VerbalBandit,
                  ag: UCBGuide,
                  oracle_agent: MABAgent,
@@ -529,7 +529,7 @@ class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, MABSummaryHistoryFuncWit
 
 
 class OracleLLMCBAgentRHWithAG(OracleLLMCBAgent, LLM, CBRawHistoryFuncWithAlgorithmGuide,
-                               DataCollectWithLLMAgent):
+                               SampleWithLLMAgent):
     def __init__(self, env: VerbalBandit,
                  ag: LinUCBGuide,
                  oracle_agent: CBAgent,

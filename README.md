@@ -156,6 +156,7 @@ The design of EVOLvE is inspired by the following projects:
 - [DSPy](https://github.com/stanfordnlp/dspy) 
 - [Trace](https://github.com/microsoft/Trace)
 - [Textgrad](https://github.com/zou-group/textgrad)
+- [d3rlpy](https://d3rlpy.readthedocs.io/en/v2.6.0/)
 - [Scala Mixin Trait](https://docs.scala-lang.org/tour/mixin-class-composition.html)
 - [In-Context Reinforcement Learning Paper List](https://github.com/dunnolab/awesome-in-context-rl)
 

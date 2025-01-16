@@ -8,10 +8,10 @@ from banditbench.tasks.cb.env import State
 from typing import Union, Dict, Any
 
 from banditbench.agents.typing import MABAgent, CBAgent
-from banditbench.sampling.sampler import DataCollect
+from banditbench.sampling.sampler import Sample
 
 
-class UCBAgent(MABAgent, DataCollect):
+class UCBAgent(MABAgent, Sample):
     """alpha-UCB, where alpha is the exploration bonus coefficient"""
     name: str = "UCB"
 

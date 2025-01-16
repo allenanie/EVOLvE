@@ -133,7 +133,7 @@ def test_mab_sampling(temp_files):
     core_bandit = BernoulliBandit(2, 200, [0.2, 0.5], 123)
 
     agent = UCBAgent(core_bandit)
-    dataset = agent.collect(core_bandit, 100)
+    dataset = agent.in_context_learn(core_bandit, 100)
     assert len(dataset) == 100
     dataset.plot_performance()
 
@@ -151,7 +151,7 @@ def test_mab_ag_sampling(temp_files):
     core_bandit = BernoulliBandit(2, 200, [0.2, 0.5], 123)
 
     guide = UCBGuide(UCBAgent(core_bandit))
-    dataset = guide.collect(core_bandit, 20)
+    dataset = guide.in_context_learn(core_bandit, 20)
     assert len(dataset) == 20
 
     assert len(dataset.action_infos) == 20
@@ -191,7 +191,7 @@ def test_mab_llm_rh_sampling(temp_files):
 
     # Test LLMMABAgentRH
     agent = LLMMABAgentRH(verbal_bandit, "gpt-3.5-turbo", history_context_len=1000)
-    buffer = agent.collect(verbal_bandit, n_trajectories=2)
+    buffer = agent.in_context_learn(verbal_bandit, n_trajs=2)
     assert len(buffer) == 2
     assert len(buffer[0].verbal_prompts) == 10
 
@@ -213,7 +213,7 @@ def test_mab_llm_sh_sampling(temp_files):
     # Test LLMMABAgentSH
     agent = LLMMABAgentSH(verbal_bandit, "gpt-3.5-turbo", history_context_len=1000)
     agent.generate = lambda x: ""  # so that the LLM is not triggered
-    buffer = agent.collect(verbal_bandit, n_trajectories=2)
+    buffer = agent.in_context_learn(verbal_bandit, n_trajs=2)
     assert len(buffer) == 2
     assert len(buffer[0].verbal_prompts) == 10
 
@@ -232,7 +232,7 @@ def test_cb_llm_rh_sampling(temp_files):
     init_cb_env()
     agent = LLMCBAgentRH(verbal_env, "gpt-3.5-turbo", history_context_len=1000)
     agent.generate = lambda x: ""  # so that the LLM is not triggered
-    buffer = agent.collect(verbal_env, n_trajectories=2)
+    buffer = agent.in_context_learn(verbal_env, n_trajs=2)
     assert len(buffer) == 2
     assert len(buffer[0].verbal_prompts) == 10
 
@@ -252,7 +252,7 @@ def test_cb_llm_rh_with_ag_sampling(temp_files):
     ucb_guide = LinUCBGuide(LinUCBAgent(env))
     agent = LLMCBAgentRHWithAG(verbal_env, ucb_guide, "gpt-3.5-turbo", history_context_len=1000)
     agent.generate = lambda x: ""  # so that the LLM is not triggered
-    buffer = agent.collect(verbal_env, n_trajectories=2)
+    buffer = agent.in_context_learn(verbal_env, n_trajs=2)
     assert len(buffer) == 2
     assert len(buffer[0].verbal_prompts) == 10
     assert buffer[0].action_info is not None
@@ -276,7 +276,7 @@ def test_mab_llm_sh_with_ag_sampling(temp_files):
     ucb_guide = UCBGuide(UCBAgent(core_bandit))
     agent = LLMMABAgentSHWithAG(verbal_bandit, ucb_guide, "gpt-3.5-turbo", history_context_len=1000)
     agent.generate = lambda x: ""  # so that the LLM is not triggered
-    buffer = agent.collect(verbal_bandit, n_trajectories=2)
+    buffer = agent.in_context_learn(verbal_bandit, n_trajs=2)
     assert len(buffer) == 2
     assert len(buffer[0].verbal_prompts) == 10
     assert buffer[0].action_info is not None
@@ -302,7 +302,7 @@ def test_mab_llm_sh_with_ag_sampling(temp_files):
     agent = OracleLLMMABAgentSHWithAG(verbal_bandit, ucb_guide, oracle)
 
     agent.generate = lambda x: ""  # so that the LLM is not triggered
-    buffer = agent.collect(verbal_bandit, n_trajectories=2)
+    buffer = agent.in_context_learn(verbal_bandit, n_trajs=2)
     assert len(buffer) == 2
     assert len(buffer[0].verbal_prompts) == 10
     assert buffer[0].action_info is not None

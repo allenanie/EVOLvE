@@ -60,7 +60,7 @@ def test_mab_fewshot(temp_files):
     agent = LLMMABAgentRH(verbal_bandit, "gpt-3.5-turbo", history_context_len=1000)
     agent.generate = lambda x: "Fake Action"
 
-    buffer = agent.collect(verbal_bandit, n_trajectories=2)
+    buffer = agent.in_context_learn(verbal_bandit, n_trajs=2)
     assert len(buffer) == 2
     assert len(buffer[0].verbal_prompts) == 10
 
@@ -95,7 +95,7 @@ def test_mab_ag_fewshot(temp_files):
     agent = LLMMABAgentSHWithAG(verbal_bandit, ucb_guide, "gpt-3.5-turbo", history_context_len=1000)
     agent.generate = lambda x: "Fake Action"
 
-    buffer = agent.collect(verbal_bandit, n_trajectories=2)
+    buffer = agent.in_context_learn(verbal_bandit, n_trajs=2)
     assert len(buffer) == 2
     assert len(buffer[0].verbal_prompts) == 10
 
@@ -160,7 +160,7 @@ def test_cb_fewshot(temp_files):
     agent = LLMCBAgentRH(verbal_env, "gpt-3.5-turbo", history_context_len=1000)
     agent.generate = lambda x: "Fake Action"
 
-    buffer = agent.collect(verbal_env, n_trajectories=2)
+    buffer = agent.in_context_learn(verbal_env, n_trajs=2)
     assert len(buffer) == 2
     assert len(buffer[0].verbal_prompts) == 10
 
@@ -194,7 +194,7 @@ def test_cb_ag_fewshot(temp_files):
     agent = LLMCBAgentRHWithAG(verbal_env, guide, "gpt-3.5-turbo", history_context_len=1000)
     agent.generate = lambda x: "Fake Action"
 
-    buffer = agent.collect(verbal_env, n_trajectories=2)
+    buffer = agent.in_context_learn(verbal_env, n_trajs=2)
     assert len(buffer) == 2
     assert len(buffer[0].verbal_prompts) == 10
 
