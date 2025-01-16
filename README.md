@@ -7,7 +7,7 @@
 </p>
 
 
-[![Github](https://img.shields.io/badge/EVOLvE-000000?style=for-the-badge&logo=github&logoColor=000&logoColor=white)](https://github.com/allenanie/EVOLvE)  [![ArXiv](https://img.shields.io/badge/EVOLvE-CF4545?style=for-the-badge&logo=arxiv&logoColor=000&logoColor=white)](https://arxiv.org/abs/2410.06238)
+[![Github](https://img.shields.io/badge/EVOLvE-000000?style=for-the-badge&logo=github&logoColor=000&logoColor=white)](https://github.com/allenanie/EVOLvE)  [![ArXiv](https://img.shields.io/badge/EVOLvE-CF4545?style=for-the-badge&logo=arxiv&logoColor=000&logoColor=white)](https://arxiv.org/pdf/2410.06238)
 
 
 [![PyPI version](https://badge.fury.io/py/banditbench.svg)](https://badge.fury.io/py/banditbench)
@@ -67,15 +67,15 @@ pip install -e .  # Install in editable mode for development
 
 We provide two types of bandit scenarios:
 
-1. Multi-Armed Bandit Scenario
-   - Classic exploration-exploitation problem with stochastic reward sampled from a fixed distributions
-   - Agent learns to select the best arm without any contextual information
-   - Example: Choosing between 5 different TikTok videos to show, without knowing which one is more popular at first
+**Multi-Armed Bandit Scenario**
+  - Classic exploration-exploitation problem with stochastic reward sampled from a fixed distributions
+  - Agent learns to select the best arm without any contextual information
+  - Example: Choosing between 5 different TikTok videos to show, without knowing which one is more popular at first
 
-2. Contextual Bandit Scenario
-   - Reward distributions depend on a context (e.g., user features)
-   - Agent learns to map contexts to optimal actions
-   - Example: Recommending movies to users based on their age, location, and past viewing history (e.g., suggesting "The Dark Knight" to a 25-year-old who enjoys action movies and lives in an urban area)
+**Contextual Bandit Scenario**
+  - Reward distributions depend on a context (e.g., user features)
+  - Agent learns to map contexts to optimal actions
+  - Example: Recommending movies to users based on their age, location (e.g., suggesting "The Dark Knight" to a 25-year-old who enjoys action movies and lives in an urban area)
 
 <p align="center">
   <img src="https://github.com/allenanie/EVOLvE/blob/main/assets/bandit_scenario.png?raw=true" alt="Bandit Scenario Example"/>
@@ -85,11 +85,9 @@ We provide two types of bandit scenarios:
 
 ### Evaluate LLMs for their In-Context Reinforcement Learning Performance
 
-(Add code example here)
+In this example, we will compare the performance of two 
 
-### Using Contextual Bandit Scenarios
 
-(Add code example here)
 
 ## 🌍 Environments & 🤖 Agents
 
@@ -157,7 +155,9 @@ The design of EVOLvE is inspired by the following projects:
 
 - [DSPy](https://github.com/stanfordnlp/dspy) 
 - [Trace](https://github.com/microsoft/Trace)
+- [Textgrad](https://github.com/zou-group/textgrad)
 - [Scala Mixin Trait](https://docs.scala-lang.org/tour/mixin-class-composition.html)
+- [In-Context Reinforcement Learning Paper List](https://github.com/dunnolab/awesome-in-context-rl)
 
 ## 🤝 Contributing
 

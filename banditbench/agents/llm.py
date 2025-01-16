@@ -30,12 +30,11 @@ class LLM:
         Returns:
             Generated response text
         """
-        return ""
-        # response = litellm.completion(
-        #     model=self.model,
-        #     messages=[{"content": message, "role": "user"}]
-        # )
-        # return response.choices[0].message.content
+        response = litellm.completion(
+            model=self.model,
+            messages=[{"content": message, "role": "user"}]
+        )
+        return response.choices[0].message.content
 
 
 class HistoryFunc:

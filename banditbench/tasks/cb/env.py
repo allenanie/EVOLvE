@@ -66,6 +66,7 @@ class ContextualBandit(Bandit):
     @property
     def feature_dim(self) -> int:
         """
-        :return: dimension of the contextual feature space
+        :return: dimension of the contextual feature space0.
+
         """
         raise NotImplementedError
