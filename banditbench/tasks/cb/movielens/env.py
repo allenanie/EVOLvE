@@ -12,7 +12,7 @@ from banditbench.tasks.cb.env import Interaction, VerbalInteraction
 from banditbench.tasks.cb.env import ContextualBandit
 from banditbench.tasks.cb.movielens.processing import load_data_files, load_movielens_data, movie_genre_to_text, \
     parse_int_list, safe_decode
-from banditbench.tasks.cb.movielens.scenario import MovieLensScenario, CBConfig
+from banditbench.tasks.cb.movielens.scenario import MovieLensScenario
 
 
 # Write it all here, but then break into
@@ -174,16 +174,13 @@ class MovieLens(ContextualBandit):
 
 
 class MovieLensVerbal(VerbalBandit):
-    def __init__(self, core_bandit: MovieLens, instruction_type: str = "detailed", num_fewshot: int = 0,
-                 few_shot_config: Optional[CBConfig] = None) -> None:
+    def __init__(self, core_bandit: MovieLens, instruction_type: str = "detailed") -> None:
         super().__init__(core_bandit)
         self.history = []
         self.core_bandit = core_bandit
         self.instruction_type = instruction_type
         self.bandit_scenario = MovieLensScenario(action_names=self.get_actions_text(),
                                                  num_actions=self.core_bandit.num_arms,
-                                                 num_fewshot=num_fewshot,
-                                                 few_shot_config=few_shot_config,
                                                  seed=None)  # no action shuffling
         self.initialize_defaults()
 

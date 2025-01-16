@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import Dict, Any, Tuple, Union, List, Optional
 import numpy as np
 from banditbench.tasks.scenario import MABScenario
-from banditbench.tasks.mab.scenarios import ButtonPushing, OnlineAds, VideoWatching, ClothesShopping, MABConfig
+from banditbench.tasks.mab.scenarios import ButtonPushing, OnlineAds, VideoWatching, ClothesShopping
 from banditbench.tasks.typing import Action, ExpectedReward, InteractionBase
 from banditbench.tasks.env import Bandit, VerbalBandit
 
@@ -177,8 +177,7 @@ class VerbalMultiArmedBandit(VerbalBandit):
                  bandit_scenario: Union[str, MABScenario, type],
                  # ===== arguments for bandit_scenario_cls =====
                  scenario_seed: Optional[int] = None,
-                 instruction_type: str = "detailed",
-                 num_fewshot: int = 0, few_shot_config: Optional[MABConfig] = None) -> None:
+                 instruction_type: str = "detailed") -> None:
         """
         bandit_scenario: Can be one of three types of inputs: a string, a instantiated BanditScenario class, or the class constructor itself
         """
@@ -193,14 +192,10 @@ class VerbalMultiArmedBandit(VerbalBandit):
             assert bandit_scenario in ["ButtonPushing", "OnlineAds", "VideoWatching",
                                        "ClothesShopping"], "Unknown bandit scenario"
             self.bandit_scenario = eval(bandit_scenario)(num_actions=self.num_arms,
-                                                         num_fewshot=num_fewshot,
-                                                         few_shot_config=few_shot_config,
                                                          seed=scenario_seed)
         elif isinstance(bandit_scenario, type):
             # noinspection PyCallingNonCallable
             self.bandit_scenario = bandit_scenario(num_actions=self.num_arms,
-                                                   num_fewshot=num_fewshot,
-                                                   few_shot_config=few_shot_config,
                                                    seed=scenario_seed)
         elif isinstance(bandit_scenario, MABScenario):
             self.bandit_scenario = bandit_scenario
