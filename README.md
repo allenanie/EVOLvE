@@ -2,10 +2,6 @@
 
 EVOLvE is a framework for experimenting with Large Language Models (LLMs) in multi-armed and contextual bandit scenarios. This repository contains the code to reproduce the results from the EVOLvE paper.
 
-<p align="center">
-  <img src="assets/main.jpeg" alt="EVOLvE Framework Overview"/>
-</p>
-
 ## 🚀 Features
 
 - Flexible framework for bandit experiments with LLMs
@@ -14,8 +10,22 @@ EVOLvE is a framework for experimenting with Large Language Models (LLMs) in mul
 - Built-in support for few-shot learning and demonstration
 - Includes popular benchmark environments (e.g., MovieLens)
 
+## 🎯 Bandit Scenario Example
+
+We provide two types of bandit scenarios:
+
+1. Multi-Armed Bandit Scenario
+   - Classic exploration-exploitation problem with stochastic reward sampled from a fixed distributions
+   - Agent learns to select the best arm without any contextual information
+   - Example: Choosing between 5 different TikTok videos to show, without knowing which one is more popular at first
+
+2. Contextual Bandit Scenario
+   - Reward distributions depend on a context (e.g., user features)
+   - Agent learns to map contexts to optimal actions
+   - Example: Recommending movies to users based on their age, location, and past viewing history (e.g., suggesting "The Dark Knight" to a 25-year-old who enjoys action movies and lives in an urban area)
+
 <p align="center">
-  <img src="assets/bandit_scenario.jpeg" alt="Bandit Scenario Example"/>
+  <img src="assets/bandit_scenario.png" alt="Bandit Scenario Example"/>
 </p>
 
 ## 📋 Requirements
@@ -96,3 +106,7 @@ We welcome contributions! Please start by reporting an issue or a feature reques
 ## 📄 License
 
 This project is licensed under the [LICENSE NAME] - see the [LICENSE](LICENSE) file for details.
+
+<p align="center">
+  <img src="assets/main.jpeg" alt="EVOLvE Framework Overview"/>
+</p>
