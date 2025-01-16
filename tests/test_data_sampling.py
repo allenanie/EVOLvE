@@ -8,7 +8,7 @@ from banditbench.tasks.mab import BernoulliBandit, VerbalMultiArmedBandit
 
 from banditbench.agents.classics import UCBAgent, LinUCBAgent
 from banditbench.agents.llm import (LLMMABAgentRH, LLMMABAgentSH, LLMCBAgentRH, LLMCBAgentRHWithAG, LLMMABAgentSHWithAG,
-                                    OracleLLMCBAgentRH, OracleLLMCBAgentRHWithAG, OracleLLMMAbAgentSH,
+                                    OracleLLMCBAgentRH, OracleLLMCBAgentRHWithAG, OracleLLMMABAgentSH,
                                     OracleLLMMAbAgentRH, OracleLLMMABAgentSHWithAG)
 from banditbench.agents.guides import UCBGuide, LinUCBGuide
 

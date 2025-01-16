@@ -6,8 +6,9 @@ from banditbench.tasks.cb.movielens import MovieLens, MovieLensVerbal
 from banditbench.agents.guides import VerbalGuide, UCBGuide, LinUCBGuide
 from banditbench.agents.classics import UCBAgent, LinUCBAgent
 
-from banditbench.agents.llm import LLMMABAgentRH, LLMMABAgentSH, LLMMABAgentSHWithAG
-from banditbench.agents.llm import LLMCBAgentRH, LLMCBAgentRHWithAG
+from banditbench.agents.llm import (LLMMABAgentRH, LLMMABAgentSH, LLMCBAgentRH, LLMCBAgentRHWithAG, LLMMABAgentSHWithAG,
+                                    OracleLLMCBAgentRH, OracleLLMCBAgentRHWithAG, OracleLLMMABAgentSH,
+                                    OracleLLMMAbAgentRH, OracleLLMMABAgentSHWithAG, LLMAgent)
 
 core_bandit = BernoulliBandit(2, 10, [0.5, 0.2], 123)
 verbal_bandit = VerbalMultiArmedBandit(core_bandit, "VideoWatching")
@@ -227,3 +228,38 @@ def test_cb_agent_sh_with_ag_reset():
     assert len(agent.interaction_history) == 0
     assert len(agent.ag_info_history) == 0
     assert agent.ag.agent.b[0][0] == 0
+
+def test_general_llm_agent_construction():
+    # Test MAB agents
+    agent = LLMAgent.build(verbal_bandit)
+    assert isinstance(agent, LLMMABAgentRH)
+
+    agent = LLMAgent.build(verbal_bandit, summary=True)
+    assert isinstance(agent, LLMMABAgentSH)
+
+    guide = UCBGuide(UCBAgent(core_bandit))
+    agent = LLMAgent.build(verbal_bandit, guide)
+    assert isinstance(agent, LLMMABAgentSHWithAG)
+
+    oracle = UCBAgent(core_bandit)
+    agent = LLMAgent.build(verbal_bandit, oracle)
+    assert isinstance(agent, OracleLLMMAbAgentRH)
+
+    agent = LLMAgent.build(verbal_bandit, guide, oracle)
+    assert isinstance(agent, OracleLLMMABAgentSHWithAG)
+
+    # Test CB agents
+    init_cb_env()
+    agent = LLMAgent.build(verbal_env)
+    assert isinstance(agent, LLMCBAgentRH)
+
+    guide = LinUCBGuide(LinUCBAgent(env))
+    agent = LLMAgent.build(verbal_env, guide)
+    assert isinstance(agent, LLMCBAgentRHWithAG)
+
+    oracle = LinUCBAgent(env)
+    agent = LLMAgent.build(verbal_env, oracle)
+    assert isinstance(agent, OracleLLMCBAgentRH)
+
+    agent = LLMAgent.build(verbal_env, guide, oracle)
+    assert isinstance(agent, OracleLLMCBAgentRHWithAG)
