@@ -21,6 +21,7 @@ DatasetBuffer has 3 components:
 
 
 class Data(dict):
+    # this is on the trajectory level -- a single trajectory
     trajectory: Trajectory
     ag_info: Union[List[List[ActionInfo]], None]
     verbal_prompts: Union[Dict[str, str], None]
@@ -46,6 +47,7 @@ class Data(dict):
 
 
 class DatasetBuffer:
+    # this is on the dataset level -- a dataset of trajectories
     def __init__(self, trajectories=None, ag_info=None, verbal_prompts=None):
         self.trajectories = trajectories or []
         self.ag_info = ag_info or []
@@ -75,9 +77,9 @@ class DatasetBuffer:
         if isinstance(idx, slice):
             # Handle slice indexing
             trajectories = self.trajectories[idx]
-            ag_info = self.ag_info[idx] if self.ag_info else None 
+            ag_info = self.ag_info[idx] if self.ag_info else None
             verbal_prompts = self.verbal_prompts[idx] if self.verbal_prompts else None
-            
+
             # Create new buffer with sliced data
             new_buffer = DatasetBuffer(trajectories, ag_info, verbal_prompts)
             return new_buffer
@@ -94,7 +96,7 @@ class DatasetBuffer:
 
     def __repr__(self):
         return str(self)
-    
+
     def __iter__(self):
         for i in range(len(self)):
             yield Data(
@@ -181,6 +183,38 @@ class DatasetBuffer:
             all_rewards.append(rewards)
         horizon = len(all_rewards[0])
         plot_cumulative_reward(all_rewards, horizon, title)
+
+    def to_sft_data(self, file=None):
+        """
+        'task_instruction': task_instruction,
+        'action_history': action_history,
+        'decision_query': decision_query,
+        'label': action_verbal
+        """
+        # [{}]
+        data = []
+        for trajectory_prompts in self.verbal_prompts:
+            traj_prompt = []
+            for i, trajectory_step_prompt in enumerate(trajectory_prompts):
+                traj_prompt.append({'step': i,
+                                    "prompt": trajectory_step_prompt['task_instruction'] + trajectory_step_prompt[
+                                        'action_history'] + trajectory_step_prompt['decision_query'],
+                                    "label": trajectory_step_prompt['label']})
+            data.append(traj_prompt)
+
+        if file:
+            if isinstance(file, str):
+                filepath = file
+            else:
+                filepath = file.name
+
+            with open(filepath, 'w') as f:
+                json.dump(data, f)
+        else:
+            return data
+
+    def save_sft_data(self, file=None):
+        return self.to_sft_data(file)
 
 
 class DataCollect:

@@ -17,6 +17,7 @@ from banditbench.tasks.cb.env import Interaction as CBInteraction, VerbalInterac
 
 from banditbench.tasks.cb.movielens import MovieLens, MovieLensVerbal
 
+
 @pytest.fixture
 def temp_files():
     files = []
@@ -167,6 +168,7 @@ def test_mab_ag_sampling(temp_files):
 
     assert len(loaded_buffer) == 20
 
+
 env = None
 verbal_env = None
 
@@ -180,6 +182,7 @@ def init_cb_env():
                         save_data_dir='./tensorflow_datasets/')
     if verbal_env is None:
         verbal_env = MovieLensVerbal(env)
+
 
 def test_mab_llm_rh_sampling(temp_files):
     # Setup environment
@@ -196,7 +199,7 @@ def test_mab_llm_rh_sampling(temp_files):
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
     temp_files.append(temp_file.name)
     temp_file.close()
-    
+
     buffer.dump(temp_file.name)
     loaded_buffer = DatasetBuffer.load(temp_file.name)
     assert len(loaded_buffer) == 2
@@ -218,7 +221,7 @@ def test_mab_llm_sh_sampling(temp_files):
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
     temp_files.append(temp_file.name)
     temp_file.close()
-    
+
     buffer.dump(temp_file.name)
     loaded_buffer = DatasetBuffer.load(temp_file.name)
     assert len(loaded_buffer) == 2
@@ -237,7 +240,7 @@ def test_cb_llm_rh_sampling(temp_files):
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
     temp_files.append(temp_file.name)
     temp_file.close()
-    
+
     buffer.dump(temp_file.name)
     loaded_buffer = DatasetBuffer.load(temp_file.name)
     assert len(loaded_buffer) == 2
@@ -258,7 +261,7 @@ def test_cb_llm_rh_with_ag_sampling(temp_files):
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
     temp_files.append(temp_file.name)
     temp_file.close()
-    
+
     buffer.dump(temp_file.name)
     loaded_buffer = DatasetBuffer.load(temp_file.name)
     assert len(loaded_buffer) == 2
@@ -282,7 +285,33 @@ def test_mab_llm_sh_with_ag_sampling(temp_files):
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
     temp_files.append(temp_file.name)
     temp_file.close()
-    
+
     buffer.dump(temp_file.name)
     loaded_buffer = DatasetBuffer.load(temp_file.name)
     assert len(loaded_buffer) == 2
+
+
+def test_mab_llm_sh_with_ag_sampling(temp_files):
+    # Setup environment
+    core_bandit = BernoulliBandit(2, 10, [0.2, 0.5], 123)
+    verbal_bandit = VerbalMultiArmedBandit(core_bandit, "VideoWatching")
+
+    # Test LLMMABAgentSHWithAG
+    ucb_guide = UCBGuide(UCBAgent(core_bandit))
+    oracle = UCBAgent(core_bandit)
+    agent = OracleLLMMABAgentSHWithAG(verbal_bandit, ucb_guide, oracle)
+
+    agent.generate = lambda x: ""  # so that the LLM is not triggered
+    buffer = agent.collect(verbal_bandit, n_trajectories=2)
+    assert len(buffer) == 2
+    assert len(buffer[0].verbal_prompts) == 10
+    assert buffer[0].action_info is not None
+
+    # Test save/load
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
+    temp_files.append(temp_file.name)
+    temp_file.close()
+
+    buffer.to_sft_data(temp_file.name)
+    data = buffer.to_sft_data()
+    print(data[0][4])

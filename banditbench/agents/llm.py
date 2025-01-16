@@ -572,6 +572,7 @@ class OracleLLMCBAgentRHWithAG(OracleLLMCBAgent, LLM, CBRawHistoryFuncWithAlgori
         query = self.env.get_query_prompt(state, side_info=snippet)
         return query
 
+
 class LLMAgent:
     @classmethod
     def build(cls, env, *args, **kwargs):
@@ -579,29 +580,30 @@ class LLMAgent:
         # we disallow passing in summary flag as an argument (because we can only determine `bool` from `args`, which is too risky)
         ag = None
         oracle_agent = None
-        
+
         remaining_args = []
         for arg in args:
             if hasattr(arg, 'get_action_guide_info'):  # Check if arg is algorithm guide
                 ag = arg
-            elif hasattr(arg, 'act') and hasattr(arg, 'update'):  # Check if arg is oracle agent; can be LLM or a classic agent
+            elif hasattr(arg, 'act') and hasattr(arg,
+                                                 'update'):  # Check if arg is oracle agent; can be LLM or a classic agent
                 oracle_agent = arg
             # elif isinstance(arg, bool):  # Check if arg is summary flag
             #     summary = arg
             else:
                 remaining_args.append(arg)
-                
+
         # Also check kwargs
         ag = ag or kwargs.pop('ag', None)
         oracle_agent = oracle_agent or kwargs.pop('oracle_agent', None)
         summary = kwargs.pop('summary', False)
-        
+
         # Determine if environment is contextual bandit or multi-armed bandit
         if hasattr(env, 'action_names'):
             is_cb = hasattr(env.core_bandit, 'sample_state')
         else:
             is_cb = hasattr(env, 'sample_state')
-        
+
         if oracle_agent:
             if is_cb:
                 if ag:
