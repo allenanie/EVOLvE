@@ -30,7 +30,7 @@ We provide two types of bandit scenarios:
    - Example: Recommending movies to users based on their age, location, and past viewing history (e.g., suggesting "The Dark Knight" to a 25-year-old who enjoys action movies and lives in an urban area)
 
 <p align="center">
-  <img src="assets/bandit_scenario.png" alt="Bandit Scenario Example"/>
+  <img src="https://github.com/allenanie/EVOLvE/blob/main/assets/bandit_scenario.png?raw=true" alt="Bandit Scenario Example"/>
 </p>
 
 ## 📋 Requirements
@@ -104,14 +104,14 @@ To create a custom bandit scenario:
 
 2. **TensorFlow Dependency**: The project currently requires TensorFlow due to TFDS usage. We plan to remove this dependency in future releases.
 
-## 🤝 Contributing
-
-We welcome contributions! Please start by reporting an issue or a feature request.
-
 ## 📄 License
 
 This project is licensed under the [LICENSE NAME] - see the [LICENSE](LICENSE) file for details.
 
+## 🤝 Contributing
+
+We welcome contributions! Please start by reporting an issue or a feature request.
+
 <p align="center">
-  <img src="assets/main.jpeg" alt="EVOLvE Framework Overview"/>
+  <img src="https://github.com/allenanie/EVOLvE/blob/main/assets/main.jpeg?raw=true" alt="EVOLvE Framework Overview"/>
 </p>
