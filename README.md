@@ -10,9 +10,28 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/allenanie/evolve/actions/workflows/python-app.yml/badge.svg)](https://github.com/allenanie/evolve/actions)
 
+<div align="center" style="font-family: Arial, sans-serif;">
+  <p>
+    <a href="#-news" style="text-decoration: none; font-weight: bold;">🎉 News</a> •
+    <a href="#️-installation" style="text-decoration: none; font-weight: bold;">✨ Getting Started</a> •
+    <a href="#-features" style="text-decoration: none; font-weight: bold;">📖 Introduction</a>
+  </p>
+  <p>
+    <a href="#-bandit-scenario-example" style="text-decoration: none; font-weight: bold;">🔧 Usage</a> •
+    <a href="#-citation" style="text-decoration: none; font-weight: bold;">🎈 Citation</a> •
+    <a href="#-acknowledgement" style="text-decoration: none; font-weight: bold;">🌻 Acknowledgement</a>
+  </p>
+</div>
+
 </div>
 
 EVOLvE is a framework for experimenting with Large Language Models (LLMs) in multi-armed and contextual bandit scenarios. This repository contains the code to reproduce the results from the EVOLvE paper.
+
+## 📰 News
+
+- [Jan 2025] 🎉 EVOLvE codebase is released and available on [GitHub](https://github.com/allenanie/EVOLvE)
+- [Jan 2025] 📦 First version of `banditbench` package is published on PyPI
+- [Oct 2024] 📄 Our paper ["EVOLvE: Evaluating and Optimizing LLMs For Exploration"](https://arxiv.org/abs/2410.06238) is now available on arXiv
 
 ## 🚀 Features
 
@@ -111,9 +130,30 @@ To create a custom bandit scenario:
 
 2. **TensorFlow Dependency**: The project currently requires TensorFlow due to TFDS usage. We plan to remove this dependency in future releases.
 
+## 🎈 Citation
+
+If you find EVOLvE useful in your research, please consider citing our paper:
+
+```bibtex
+@article{nie2024evolve,
+  title={EVOLvE: Evaluating and Optimizing LLMs For Exploration},
+  author={Nie, Allen and Su, Yi and Chang, Bo and Lee, Jonathan N and Chi, Ed H and Le, Quoc V and Chen, Minmin},
+  journal={arXiv preprint arXiv:2410.06238},
+  year={2024}
+}
+```
+
 ## 📄 License
 
 This project is licensed under the [LICENSE NAME] - see the [LICENSE](LICENSE) file for details.
+
+## 🌻 Acknowledgement
+
+The design of EVOLvE is inspired by the following projects:
+
+- [DSPy](https://github.com/stanfordnlp/dspy) 
+- [Trace](https://github.com/microsoft/Trace)
+- [Scala Mixin Trait](https://docs.scala-lang.org/tour/mixin-class-composition.html)
 
 ## 🤝 Contributing
 
