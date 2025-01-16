@@ -16,6 +16,23 @@ from tqdm import tqdm
 
 from copy import deepcopy
 
+def get_trajectory_seeds(env_seed, n_trajs):
+    """Get seeds for environment and trajectories.
+    
+    Args:
+        env: The environment to get seeds for
+        n_trajs: Number of trajectory seeds to generate
+    Returns:
+        List of trajectory seeds
+    """
+    # Get environment seed or generate random one
+    if env_seed is None:
+        env_seed = np.random.randint(0, 2**32-1)
+        
+    # Generate trajectory seeds
+    rng = np.random.RandomState(env_seed)
+    return rng.randint(0, 2**32-1, size=n_trajs)
+
 class Sample:
 
     def in_context_learn(self, env: Union[Bandit, ContextualBandit], n_trajs=20) -> DatasetBuffer:
@@ -30,15 +47,16 @@ class Sample:
         is_verbal = hasattr(env, 'action_names')
         is_contextual = hasattr(env, 'feature_dim')
 
+        traj_seeds = get_trajectory_seeds(env.seed, n_trajs)
         buffer = DatasetBuffer()
 
-        for _ in tqdm(range(n_trajs), desc="Collecting trajectories"):
+        for traj_seed in tqdm(traj_seeds, desc="Collecting trajectories"):
             trajectory = []
             self.reset()
 
             if is_contextual:
                 # Contextual bandit case
-                state, _ = env.reset()
+                state, _ = env.reset(seed=traj_seed)
                 done = False
                 while not done:
                     action = self.act(state)
@@ -48,7 +66,7 @@ class Sample:
                     state = new_state
             else:
                 # Multi-armed bandit case
-                env.reset()
+                env.reset(seed=traj_seed)
                 done = False
                 while not done:
                     action = self.act()
@@ -59,8 +77,6 @@ class Sample:
             buffer.append(Trajectory(trajectory))
 
         return buffer
-
-
 class SampleWithAG:
     # Using AG to collect data will produce trajectory AND fill in side-info for each action
 
@@ -71,9 +87,10 @@ class SampleWithAG:
         # and collect the action info from the AG
         is_contextual = hasattr(env, 'feature_dim')
 
+        traj_seeds = get_trajectory_seeds(env.seed, n_trajs)
         buffer = DatasetBuffer()
 
-        for _ in tqdm(range(n_trajs), desc="Collecting trajectories"):
+        for traj_seed in tqdm(traj_seeds, desc="Collecting trajectories"):
             trajectory = []
             ag_info = []
 
@@ -81,7 +98,7 @@ class SampleWithAG:
 
             if is_contextual:
                 # Contextual bandit case
-                state, _ = env.reset()
+                state, _ = env.reset(seed=traj_seed)
                 done = False
                 while not done:
                     action = self.agent.act(state)
@@ -95,7 +112,7 @@ class SampleWithAG:
                     state = new_state
             else:
                 # Multi-armed bandit case
-                env.reset()
+                env.reset(seed=traj_seed)
                 done = False
                 while not done:
                     action = self.agent.act()
@@ -119,8 +136,11 @@ class SampleWithLLMAgent:
         
         is_contextual = hasattr(env.core_bandit, 'feature_dim')
         buffer = DatasetBuffer()
+        
+        # Get trajectory seeds upfront
+        traj_seeds = get_trajectory_seeds(env.core_bandit.seed, n_trajs)
 
-        def collect_single_trajectory(trial_idx, trial_pbar):
+        def collect_single_trajectory(trial_idx, trial_seed, trial_pbar):
             trajectory = []
             ag_info = []
             verbal_prompts = []
@@ -138,7 +158,7 @@ class SampleWithLLMAgent:
 
             if is_contextual:
                 # Contextual bandit case
-                state, _ = env_copy.reset()
+                state, _ = env_copy.reset(seed=trial_seed)
                 done = False
                 while not done:
                     # Get verbal prompts for this step
@@ -166,7 +186,7 @@ class SampleWithLLMAgent:
                     step_pbar.update(1)
             else:
                 # Multi-armed bandit case  
-                env_copy.reset()
+                env_copy.reset(seed=trial_seed)
                 done = False
                 while not done:
                     # Get verbal prompts for this step
@@ -200,7 +220,7 @@ class SampleWithLLMAgent:
         # Update the main progress bar
         with tqdm(total=n_trajs, desc="Collecting trajectories", position=0) as trial_pbar:
             with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-                futures = [executor.submit(collect_single_trajectory, i, trial_pbar) 
+                futures = [executor.submit(collect_single_trajectory, i, traj_seeds[i], trial_pbar) 
                           for i in range(n_trajs)]
                 
                 for future in concurrent.futures.as_completed(futures):

@@ -106,9 +106,10 @@ class MultiArmedBandit(Bandit):
     def reset(self, seed: Optional[int] = None) -> None:
         self.history = []
         self.h = 0
+        if seed is not None:
+            self.set_seed(seed)
+
         if self.shuffle_at_reset:
-            if seed is not None:
-                self.set_seed(seed)
             self.shuffle_arms()
 
 
@@ -207,9 +208,6 @@ class VerbalMultiArmedBandit(VerbalBandit):
 
     def reset(self, seed: Optional[int] = None) -> Any:
         self.core_bandit.reset(seed)
-        verbal_instruction = self.bandit_scenario.get_instruction(self.instruction_type)
-        return None, {'instruction': verbal_instruction,
-                      'query': self.get_query_prompt()}
 
     def get_query_prompt(self, *args, **kwargs) -> str:
         return self.bandit_scenario.get_query_prompt()

@@ -7,7 +7,7 @@ from banditbench.tasks.cb.env import ContextualBandit
 from banditbench.tasks.typing import Trajectory
 from banditbench.agents.typing import Agent, ActionInfo
 
-from banditbench.utils import plot_cumulative_reward
+from banditbench.utils import plot_cumulative_reward, plot_multi_cumulative_reward
 
 """
 DatasetBuffer has 3 components:
@@ -170,16 +170,44 @@ class DatasetBuffer:
     def save(self, file):
         self.dump(file)
 
-    def plot_performance(self, title=None):
+    def plot_performance(self, *args, title=None,labels=None):
         # plot the mean performance over all trajectories stored in the dataset
-        all_rewards = []
+        config_name_to_all_rewards = {}
+        
+        # Parse args to find title if provided
+        buffers = []
+        for arg in args:
+            if isinstance(arg, str):
+                title = arg
+            else:
+                buffers.append(arg)
+        
+        # Get rewards from current buffer
+        current_rewards = []
         for trajectory in self.trajectories:
             rewards = []
             for interaction in trajectory:
                 rewards.append(interaction.reward)
-            all_rewards.append(rewards)
-        horizon = len(all_rewards[0])
-        plot_cumulative_reward(all_rewards, horizon, title)
+            current_rewards.append(rewards)
+            
+        config_name = labels[0] if labels and len(labels) > 0 else 'Agent 1'
+        config_name_to_all_rewards[config_name] = current_rewards
+        
+        # Get rewards from other buffers if provided
+        if buffers:
+            for i, buffer in enumerate(buffers):
+                buffer_rewards = []
+                for trajectory in buffer.trajectories:
+                    rewards = []
+                    for interaction in trajectory:
+                        rewards.append(interaction.reward)
+                    buffer_rewards.append(rewards)
+                    
+                buffer_name = labels[i+1] if labels and len(labels) > i+1 else f'Agent {i+2}'
+                config_name_to_all_rewards[buffer_name] = buffer_rewards
+            
+        horizon = len(current_rewards[0])
+        plot_multi_cumulative_reward(config_name_to_all_rewards, horizon, title)
 
     def to_sft_data(self, file=None):
         """
