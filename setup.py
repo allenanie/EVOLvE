@@ -29,8 +29,8 @@ setuptools.setup(
     license='MIT LICENSE',
     description="BanditBench: A Bandit Benchmark to Evaluate Self-Improving LLM Algorithms",
     long_description=open('README.md', encoding="utf8").read(),
-    packages=setuptools.find_packages(include=["banditbench*",
-                                               "banditbench/tasks/cb/movielens/data/geo-data.csv"]),
+    include_package_data=True,
+    packages=setuptools.find_packages(include=["banditbench*"]),
     install_requires=install_requires,
     python_requires=">=3.9",
 )
