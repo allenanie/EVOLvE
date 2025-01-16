@@ -11,7 +11,7 @@ from banditbench.tasks.cb.env import Interaction, VerbalInteraction
 
 from banditbench.tasks.cb.env import ContextualBandit
 from banditbench.tasks.cb.movielens.processing import load_data_files, load_movielens_data, movie_genre_to_text, \
-    parse_int_list, safe_decode
+    parse_int_list, safe_decode, get_geo_data
 from banditbench.tasks.cb.movielens.scenario import MovieLensScenario
 
 
@@ -187,9 +187,12 @@ class MovieLensVerbal(VerbalBandit):
     def initialize_defaults(self) -> None:
         # https://github.com/scpike/us-state-county-zip/tree/master
         # load in csv "geo-data.csv" data from the data directory
-        data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+        
+        geo_data_path = get_geo_data()
+        
+        # Load the data
         self.zipdata = {}
-        with open(os.path.join(data_dir, 'geo-data.csv')) as f:
+        with open(geo_data_path) as f:
             csvfile = csv.DictReader(f)
             for row in csvfile:
                 self.zipdata[row['zipcode']] = ("{} of {}".format(row['city'], row['county']), row['state'])

@@ -1,9 +1,34 @@
 import re
 import numpy as np
 
-# Remove these two??
-# MOVIELENS_NUM_USERS = 943
-# MOVIELENS_NUM_MOVIES = 1682
+import os
+import csv
+import requests
+from pathlib import Path
+
+def get_geo_data():
+    # First check if file exists in current directory's data folder
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    local_data_path = os.path.join(current_dir, 'data', 'geo-data.csv')
+    
+    if os.path.exists(local_data_path):
+        return local_data_path
+        
+    # If not found locally, use home directory
+    home_dir = str(Path.home())
+    data_dir = os.path.join(home_dir, '.banditbench', 'data')
+    os.makedirs(data_dir, exist_ok=True)
+
+    geo_data_path = os.path.join(data_dir, 'geo-data.csv')
+
+    # Download file if it doesn't exist
+    if not os.path.exists(geo_data_path):
+        url = 'https://github.com/allenanie/EVOLvE/raw/refs/heads/main/banditbench/tasks/cb/movielens/data/geo-data.csv'
+        response = requests.get(url)
+        with open(geo_data_path, 'wb') as f:
+            f.write(response.content)
+
+    return geo_data_path
 
 movie_genre_to_text = [
     'Action',
