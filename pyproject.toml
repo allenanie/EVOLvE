@@ -1,0 +1,23 @@
+
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "banditbench"
+dynamic = ["version", "authors", "license", "requires-python", "dependencies", "description"]
+readme = "README.md"
+authors = [{ name = "Allen Nie", email = "anie@cs.stanford.edu" }]
+keywords = ["banditbench", "bandit", "llm", 'ai', 'rl', 'agent']
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.9",
+]
+
+
+[project.urls]
+Homepage = "https://github.com/allenanie/EVOLvE"
+Documentation = "https://github.com/allenanie/EVOLvE"
+Repository = "https://github.com/allenanie/EVOLvE"
