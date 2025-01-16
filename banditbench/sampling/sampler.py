@@ -32,8 +32,7 @@ class Sample:
 
         buffer = DatasetBuffer()
 
-        trajectories_collected = 0
-        while trajectories_collected < n_trajs:
+        for _ in tqdm(range(n_trajs), desc="Collecting trajectories"):
             trajectory = []
             self.reset()
 
@@ -58,7 +57,6 @@ class Sample:
                     self.update(action, reward, info)
 
             buffer.append(Trajectory(trajectory))
-            trajectories_collected += 1
 
         return buffer
 
@@ -75,8 +73,7 @@ class SampleWithAG:
 
         buffer = DatasetBuffer()
 
-        trajectories_collected = 0
-        while trajectories_collected < n_trajs:
+        for _ in tqdm(range(n_trajs), desc="Collecting trajectories"):
             trajectory = []
             ag_info = []
 
@@ -111,7 +108,6 @@ class SampleWithAG:
                     self.agent.update(action, reward, info)
 
             buffer.add(Trajectory(trajectory), ag_info)
-            trajectories_collected += 1
 
         return buffer
 
