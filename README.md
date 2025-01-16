@@ -1,6 +1,11 @@
 <div align="center">
 
-# EVOLvE: Evaluating and Optimizing LLMs For Exploration
+# EVOLvE: Evaluating and Optimizing LLMs For Exploration In-Context
+
+<p align="center">
+  <img src="https://github.com/allenanie/EVOLvE/blob/main/assets/logo.png?raw=true" alt="EVOLvE Logo" width="200" height="200"/>
+</p>
+
 
 [![Github](https://img.shields.io/badge/EVOLvE-000000?style=for-the-badge&logo=github&logoColor=000&logoColor=white)](https://github.com/allenanie/EVOLvE)  [![ArXiv](https://img.shields.io/badge/EVOLvE-CF4545?style=for-the-badge&logo=arxiv&logoColor=000&logoColor=white)](https://arxiv.org/abs/2410.06238)
 
@@ -25,7 +30,7 @@
 
 </div>
 
-EVOLvE is a framework for experimenting with Large Language Models (LLMs) in multi-armed and contextual bandit scenarios. This repository contains the code to reproduce the results from the EVOLvE paper.
+EVOLvE is a framework for evaluating Large Language Models (LLMs) for In-Context Reinforcement Learning (ICRL). We provide a flexible framework for single-step RL experiments (bandit) with LLMs. This repository contains the code to reproduce the results from the EVOLvE paper.
 
 ## 📰 News
 
@@ -35,13 +40,30 @@ EVOLvE is a framework for experimenting with Large Language Models (LLMs) in mul
 
 ## 🚀 Features
 
-- Flexible framework for bandit experiments with LLMs
+- Flexible framework for evaluating LLMs for In-Context Reinforcement Learning (ICRL)
 - Support for both multi-armed and contextual bandit scenarios
 - Mixin-based design for highly customizable LLM agents
 - Built-in support for few-shot learning and demonstration
 - Includes popular benchmark environments (e.g., MovieLens)
 
-## 🎯 Bandit Scenario Example
+
+## 🛠️ Installation
+
+### Option 1: Install from PyPI (Recommended for Users)
+
+```bash
+pip install banditbench
+```
+
+### Option 2: Install from Source (Recommended for Developers)
+
+```bash
+git clone https://github.com/allenanie/EVOLvE.git
+cd EVOLvE
+pip install -e .  # Install in editable mode for development
+```
+
+## 🎯 Bandit Scenario
 
 We provide two types of bandit scenarios:
 
@@ -59,35 +81,17 @@ We provide two types of bandit scenarios:
   <img src="https://github.com/allenanie/EVOLvE/blob/main/assets/bandit_scenario.png?raw=true" alt="Bandit Scenario Example"/>
 </p>
 
-## 📋 Requirements
-
-- Python >= 3.9
-- TensorFlow (required for TensorFlow Datasets)
-- Other dependencies will be automatically installed
-
-## 🛠️ Installation
-
-### Option 1: Install from PyPI (Recommended for Users)
-
-```bash
-pip install banditbench
-```
-
-### Option 2: Install from Source (Recommended for Developers)
-
-```bash
-git clone https://github.com/yourusername/evolve.git
-cd evolve
-pip install -e .  # Install in editable mode for development
-```
-
 ## 🎮 Quick Start
 
-### Using Existing Multi-Armed Bandit Scenarios
+### Evaluate LLMs for their In-Context Reinforcement Learning Performance
 
 (Add code example here)
 
 ### Using Contextual Bandit Scenarios
+
+(Add code example here)
+
+## 🌍 Environments & 🤖 Agents
 
 (Add code example here)
 
