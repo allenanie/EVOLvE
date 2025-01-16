@@ -2,18 +2,6 @@ import numpy as np
 from typing import Union, List, Optional
 from banditbench.tasks.typing import State
 
-
-class BanditConfig:
-
-    def get_file_name(self):
-        raise NotImplementedError
-        # return f"bandit_{self.bandit_type}_{self.domain}_arms{self.num_arms}_{self.difficulty}_trial0_fewshot_equal_space.json"
-
-    def get_file_path(self, base_dir: str):
-        raise NotImplementedError
-        # return os.path.join(base_dir, self.get_file_name())
-
-
 class BanditScenario:
     action_names: List[str]
     action_unit: str
@@ -32,17 +20,13 @@ class BanditScenario:
                  action_names: List[str], action_unit: str,
                  base_description: str, detailed_description: str,
                  query_prompt: str,
-                 seed: Union[int, None] = None,
-                 num_fewshot: int = 0, few_shot_config: Optional[BanditConfig] = None):
+                 seed: Union[int, None] = None):
 
         self.action_names = action_names
         self.action_unit = action_unit
         self.base_description = base_description
         self.detailed_description = detailed_description
         self.query_prompt = query_prompt
-        self.num_fewshot = num_fewshot
-        self.few_shot_config = few_shot_config
-        self.initialize_defaults()
 
         if seed is not None:
             self.set_seed(seed)
@@ -51,23 +35,11 @@ class BanditScenario:
         else:
             self.action_names = self.action_names[:num_actions]
 
-        if num_fewshot > 0:
-            assert few_shot_config is not None, "Few-shot config must be provided"
-            self.fewshot_examples = self.load_fewshot_examples()
-
-    def initialize_defaults(self) -> None:
-        self.fewshot_examples = ""
-
     def set_seed(self, seed: Optional[int] = None) -> None:
         self.seed = seed
         self.np_random = np.random.default_rng(self.seed)
 
     def get_instruction(self, version="base") -> str:
-        raise NotImplementedError
-
-    def load_fewshot_examples(self) -> str:
-        """Few-shot examples have their own configuration such as the number of arms, difficulty, scenario, etc."""
-        # reminder: you need to implement this later
         raise NotImplementedError
 
 
@@ -84,9 +56,6 @@ class MABScenario(BanditScenario):
             )
         else:
             raise ValueError(f"Unknown description version {version}")
-
-        if self.fewshot_examples != "":
-            prompt += "\n" + self.fewshot_examples
 
         return prompt
 
