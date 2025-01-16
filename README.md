@@ -119,8 +119,8 @@ classic_result.plot_performance(llm_result, labels=['UCB', 'GPT-3.5 Turbo'])
 
 Doing this will give you a plot like this:
 
-<p align="center">
-  <img src="https://github.com/allenanie/EVOLvE/blob/main/assets/UCBvsLLM.png?raw=true" alt="UCB vs LLM"/>
+<p align="left">
+  <img src="https://github.com/allenanie/EVOLvE/blob/main/assets/UCBvsLLM.png?raw=true" alt="UCB vs LLM" style="width: 40%;"/>
 </p>
 
 
