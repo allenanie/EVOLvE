@@ -23,7 +23,7 @@ def get_geo_data():
 
     # Download file if it doesn't exist
     if not os.path.exists(geo_data_path):
-        url = 'https://github.com/allenanie/EVOLvE/raw/refs/heads/main/banditbench/tasks/cb/movielens/data/geo-data.csv'
+        url = 'https://raw.githubusercontent.com/scpike/us-state-county-zip/refs/heads/master/geo-data.csv'
         response = requests.get(url)
         with open(geo_data_path, 'wb') as f:
             f.write(response.content)
