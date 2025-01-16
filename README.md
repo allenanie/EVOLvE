@@ -92,23 +92,20 @@ from banditbench.tasks.mab import BernoulliBandit, VerbalMultiArmedBandit
 from banditbench.agents.llm import LLMAgent
 from banditbench.agents.classics import UCBAgent
 
-# this is a 5-armed bandit, it allows any agent to interact with it 100 times (horizon=100)
-# in particular, this is a BernoulliBandit, which means the reward is sampled from a Bernoulli distribution
-# For each arm, we set the probability of getting a reward to be [0.2, 0.2, 0.2, 0.2, 0.5]
+# this is a 5-armed bandit
+# with the probability of getting a reward to be [0.2, 0.2, 0.2, 0.2, 0.5]
 core_bandit = BernoulliBandit(5, horizon=100, arm_params=[0.2, 0.2, 0.2, 0.2, 0.5])
 
-# this is a verbal bandit, which wraps the core bandit and provides a verbal interface for the agent
-# the scenario is "ClothesShopping", which means the agent will see actions as clothing item names like `shirt`, `pants`, `shoes`, etc.
+# The scenario is "ClothesShopping", agent sees actions as clothing items
 verbal_bandit = VerbalMultiArmedBandit(core_bandit, "ClothesShopping")
 
-# we create an agent that summarizes the history of interaction (the summary is using statistics -- not produced by an LLM)
-# LLM uses the summary to make decisions
+# we create an LLM agent that uses summary statistics (mean, number of times, etc.)
 agent = LLMAgent.build(verbal_bandit, summary=True, model="gpt-3.5-turbo")
 
-# we run the agent in-context learning on the verbal bandit for 5 trajectories
 llm_result = agent.in_context_learn(verbal_bandit, n_trajs=5)
 
-# we create a UCB agent, which is a classic agent that uses Upper Confidence Bound to make decisions
+# we create a UCB agent, which is a classic agent that uses 
+# Upper Confidence Bound to make decisions
 classic_agent = UCBAgent(core_bandit)
 
 # we run the classic agent in-context learning on the core bandit for 5 trajectories
@@ -120,13 +117,83 @@ classic_result.plot_performance(llm_result, labels=['UCB', 'GPT-3.5 Turbo'])
 Doing this will give you a plot like this:
 
 <p align="left">
-  <img src="https://github.com/allenanie/EVOLvE/blob/main/assets/UCBvsLLM.png?raw=true" alt="UCB vs LLM" style="width: 40%;"/>
+  <img src="https://github.com/allenanie/EVOLvE/blob/main/assets/UCBvsLLM.png?raw=true" alt="UCB vs LLM" style="width: 60%;"/>
 </p>
 
 
 ## 🌍 Environments & 🤖 Agents
 
-(Add code example here)
+Here are a list of agents that are supported by EVOLvE:
+
+For Multi-Armed Bandit Scenario:
+
+| Agent Name | Code | Interaction History | Algorithm Guide |
+|------------|------|---------------------|-----------------|
+| UCB | `UCBAgent(env)` | `False` | `NA` |
+| Greedy | `GreedyAgent(env)` | `False` | `NA` |
+| Thompson Sampling | `ThompsonSamplingAgent(env)` | `False` | `NA` |
+| LLM with Raw History | `LLMAgent.build(env)` | `False` | `False` |
+| LLM with Summary | `LLMAgent.build(env, summary=True)` | `True` | `False` |
+| LLM with UCB Guide | `LLMAgent.build(env, summary=True, guide=UCBGuide(env))` | `True` | `True` |
+
+For Contextual Bandit Scenario:
+
+| Agent Name | Code | Interaction History | Algorithm Guide |
+|------------|------|---------------------|-----------------|
+| LinUCB | `LinUCBAgent(env)` | `False` | `NA` |
+| LLM with Raw History | `LLMAgent.build(env)` | `False` | `False` |
+| LLM with UCB Guide | `LLMAgent.build(env, guide=LinUCBGuide(env))` | `True` | `True` |
+
+Here are a list of environments that are supported by EVOLvE:
+
+**Multi-Armed Bandit Scenario**
+
+| Environment Name | Code | Description |
+|------------|------|-----------------|
+| Bernoulli Bandit | `BernoulliBandit(n_arms, horizon, arm_params)` | Arm parameter is Bernoulli p|
+| Gaussian Bandit | `GaussianBandit(n_arms, horizon, arm_params)` | Arm parameter is a tuple of (mean, variance)|
+
+For LLM, we provide a `VerbalMultiArmedBandit` environment that converts the core bandit into a verbal bandit.
+
+| Scenario Name | Code | Action Names |
+|------------|------|-----------------|
+| Button Pushing | `ButtonPushing` | Action names are colored buttons like "Red", "Blue", "Green", etc.|
+| Online Ads | `OnlineAds` | Action names are online ads like "Ad A", "Ad B", "Ad C", etc.|
+| Video Watching | `VideoWatching` | Action names are videos like "Video A", "Video B", "Video C", etc.|
+| Clothes Shopping | `ClothesShopping` | Action names are clothing items like "Velvet Vogue Jacket", "Silk Serenity Dress", etc.|
+
+They can be coupled together like:
+
+```python
+from banditbench.tasks.mab import BernoulliBandit, VerbalMultiArmedBandit
+
+core_bandit = BernoulliBandit(2, 10, [0.5, 0.2], 123)
+verbal_bandit = VerbalMultiArmedBandit(core_bandit, "VideoWatching")
+```
+
+**Contextual Bandit Scenario**
+
+| Environment Name | Code | Description |
+|------------|------|-----------------|
+| MovieLens | `MovieLens(task_name, num_arms, horizon)` | `task_name` loads in specific MovieLens dataset|
+| MovieLensVerbal | `MovieLensVerbal(env)` | Similar to VerbalEnv before. Scenario is fixed to be "MovieLens"|
+
+```python
+from banditbench.tasks.contextual import MovieLens, MovieLensVerbal
+
+env = MovieLens('100k-ratings', num_arms=10, horizon=200, rank_k=5, mode='train',
+                        save_data_dir='./tensorflow_datasets/')
+verbal_env = MovieLensVerbal(env)
+```
+
+To use the environments listed in the paper, you can use the following code:
+
+```python
+from banditbench.tasks.mab import create_small_gap_bernoulli_bandit, create_large_gap_bernoulli_bandit
+from banditbench.tasks.mab import create_high_var_gaussian_bandit, create_low_var_gaussian_bandit
+
+easy_bern_bandit = create_small_gap_bernoulli_bandit(num_arms=5, horizon=1000)
+```
 
 ## 🧩 Architecture
 
@@ -155,11 +222,11 @@ We use a Mixin-based design pattern to provide maximum flexibility and customiza
 To create a custom bandit scenario:
 1. Inherit from the base scenario class
 2. Implement required methods
-(Add more specific instructions)
+(Coming soon)
 
 ### Creating Custom Agents
 
-(Add instructions for creating custom agents)
+(Coming soon)
 
 ## ⚠️ Known Issues
 
