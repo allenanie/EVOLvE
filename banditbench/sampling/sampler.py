@@ -24,10 +24,10 @@ class Data(dict):
     # this is on the trajectory level -- a single trajectory
     trajectory: Trajectory
     ag_info: Union[List[List[ActionInfo]], None]
-    verbal_prompts: Union[Dict[str, str], None]
+    verbal_prompts: Union[List[Dict[str, str]], None]
 
     def __init__(self, trajectory: Trajectory, action_info: Union[List[List[ActionInfo]], None] = None,
-                 verbal_prompts: Union[Dict[str, str], None] = None):
+                 verbal_prompts: Union[List[Dict[str, str]], None] = None):
         super().__init__()
         self['trajectory'] = trajectory
         self['action_info'] = action_info
@@ -54,7 +54,7 @@ class DatasetBuffer:
         self.verbal_prompts = verbal_prompts or []
 
     def append(self, trajectory: Trajectory, action_info: Union[List[List[ActionInfo]], None] = None,
-               verbal_prompt: Union[str, None] = None):
+               verbal_prompt: Union[List[Dict[str, str]], None] = None):
         self.trajectories.append(trajectory)
         if action_info is not None:
             self.ag_info.append(action_info)
@@ -62,7 +62,7 @@ class DatasetBuffer:
             self.verbal_prompts.append(verbal_prompt)
 
     def add(self, trajectory: Trajectory, action_info: Union[List[List[ActionInfo]], None] = None,
-            verbal_prompt: Union[str, None] = None):
+            verbal_prompt: Union[List[Dict[str, str]], None] = None):
         self.append(trajectory, action_info, verbal_prompt)
 
     def clear(self):
