@@ -70,10 +70,6 @@ class MovieLensScenario(ScenarioUtil, CBScenario):
         else:
             raise ValueError(f'Unknown description version {version}')
 
-        # this is where few-shot prompt is added
-        if self.fewshot_examples != "":
-            prompt += '\n' + self.fewshot_examples
-
         return prompt
 
     def get_query_prompt(self, state: State, side_info: Optional[str] = None):
