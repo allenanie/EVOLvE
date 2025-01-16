@@ -16,7 +16,8 @@ install_requires = [
     "tensorflow_datasets==4.9.7",
     "tensorflow==2.15.0",
     "numpy==1.24.3",
-    "matplotlib"
+    "matplotlib",
+    "scipy"
 ]
 
 setuptools.setup(
