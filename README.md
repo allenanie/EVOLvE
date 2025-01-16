@@ -1,5 +1,10 @@
 # EVOLvE
 
+[![PyPI version](https://badge.fury.io/py/banditbench.svg)](https://badge.fury.io/py/banditbench)
+[![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://github.com/allenanie/evolve/actions/workflows/python-app.yml/badge.svg)](https://github.com/allenanie/evolve/actions)
+
 EVOLvE is a framework for experimenting with Large Language Models (LLMs) in multi-armed and contextual bandit scenarios. This repository contains the code to reproduce the results from the EVOLvE paper.
 
 ## 🚀 Features
