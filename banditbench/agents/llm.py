@@ -146,10 +146,12 @@ class LLMMABAgent(MABAgent, LLM, HistoryFunc):
     def act(self) -> str:
         """Generate next action using LLM."""
         # Implement LLM-based action selection
+        n_interactions = len(self.interaction_history)
+
         task_instruction = self.env.get_task_instruction()
         if self.demos is not None:
-            task_instruction += self.demos
-        history_context = self.represent_history()
+            task_instruction += self.demos + '\n'
+        history_context = self.decision_context_start.format(n_interactions) + self.represent_history()
         query = self.env.get_query_prompt()
 
         response = self.generate(task_instruction + history_context + query)
@@ -204,10 +206,12 @@ class LLMCBAgent(CBAgent, LLM, HistoryFunc):
     def act(self, state: State) -> str:
         """Generate next action using LLM and context."""
         # Implement LLM-based contextual action selection
+        n_interactions = len(self.interaction_history)
+
         task_instruction = self.env.get_task_instruction()
         if self.demos is not None:
-            task_instruction += self.demos
-        history_context = self.represent_history()
+            task_instruction += self.demos + '\n'
+        history_context = self.decision_context_start.format(n_interactions) + self.represent_history()
         query = self.env.get_query_prompt(state, side_info=None)
 
         response = self.generate(task_instruction + history_context + query)
@@ -431,7 +435,7 @@ class LLMMABAgentSHWithAG(LLMMABAgent, LLM, MABSummaryHistoryFuncWithAlgorithmGu
                  model: str = "gpt-3.5-turbo",
                  history_context_len=1000,
                  verbose=False):
-        MABAgent.__init__(self, env)
+        LLMMABAgent.__init__(self, env)
         LLM.__init__(self, model)
         MABSummaryHistoryFuncWithAlgorithmGuide.__init__(self, ag,
                                                          history_context_len)
@@ -455,7 +459,7 @@ class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBRawHistoryFuncWithAlgorithmGuide,
                  model: str = "gpt-3.5-turbo",
                  history_context_len=1000,
                  verbose=False):
-        MABAgent.__init__(self, env)
+        LLMCBAgent.__init__(self, env)
         LLM.__init__(self, model)
         CBRawHistoryFuncWithAlgorithmGuide.__init__(self, ag,
                                                     history_context_len)
@@ -491,7 +495,7 @@ class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBRawHistoryFuncWithAlgorithmGuide,
                 json_fmt=True) + "}"
         snippet += '\n'
 
-        query = self.env.get_query_prompt(state, side_info=snippet)
+        query = self.decision_context_start + self.env.get_query_prompt(state, side_info=snippet)
 
         response = self.generate(task_instruction + history_context + query)
         return response
@@ -567,7 +571,6 @@ class OracleLLMCBAgentRHWithAG(OracleLLMCBAgent, LLM, CBRawHistoryFuncWithAlgori
 
         query = self.env.get_query_prompt(state, side_info=snippet)
         return query
-
 
 # class LLMAgent:
 #     @classmethod

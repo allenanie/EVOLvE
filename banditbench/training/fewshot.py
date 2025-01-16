@@ -25,10 +25,10 @@ class FewShot:
     @classmethod
     def empower(cls, agent: Union[LLMMABAgent, LLMCBAgent],
                 datasource: Optional[Union[DatasetBuffer, str]] = None,
-                traj_idx: Optional[int] = None,
                 num_examples: Optional[int] = None,
                 skip_first: Optional[int] = None,
-                sample_freq: int = 2) -> Union[LLMMABAgent, LLMCBAgent]:
+                sample_freq: Optional[int] = None,
+                traj_idx: Optional[int] = None) -> Union[LLMMABAgent, LLMCBAgent]:
         """
         This is the general "compilation" function that takes in the agent
 
