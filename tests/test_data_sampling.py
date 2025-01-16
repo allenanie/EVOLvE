@@ -144,7 +144,7 @@ def test_mab_sampling(temp_files):
     dataset.save(temp_file.name)
     loaded_buffer = DatasetBuffer.load(temp_file.name)
 
-    assert len(loaded_buffer) == 20
+    assert len(loaded_buffer) == 100
 
 
 def test_mab_ag_sampling(temp_files):

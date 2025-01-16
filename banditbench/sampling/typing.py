@@ -170,7 +170,7 @@ class DatasetBuffer:
     def save(self, file):
         self.dump(file)
 
-    def plot_performance(self, *args, title=None,labels=None):
+    def plot_performance(self, *args, title=None, labels=None, filename=None):
         # plot the mean performance over all trajectories stored in the dataset
         config_name_to_all_rewards = {}
         
@@ -178,7 +178,10 @@ class DatasetBuffer:
         buffers = []
         for arg in args:
             if isinstance(arg, str):
-                title = arg
+                if arg.endswith('.png') or arg.endswith('.jpg') or arg.endswith('.jpeg') or arg.endswith('.pdf'):
+                    filename = arg
+                else:
+                    title = arg
             else:
                 buffers.append(arg)
         
@@ -207,7 +210,7 @@ class DatasetBuffer:
                 config_name_to_all_rewards[buffer_name] = buffer_rewards
             
         horizon = len(current_rewards[0])
-        plot_multi_cumulative_reward(config_name_to_all_rewards, horizon, title)
+        plot_multi_cumulative_reward(config_name_to_all_rewards, horizon, title, filename)
 
     def to_sft_data(self, file=None):
         """

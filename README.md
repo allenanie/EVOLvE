@@ -85,8 +85,43 @@ We provide two types of bandit scenarios:
 
 ### Evaluate LLMs for their In-Context Reinforcement Learning Performance
 
-In this example, we will compare the performance of two 
+In this example, we will compare the performance of two agents (LLM and one of the classic agents) on a multi-armed bandit task.
 
+```python
+from banditbench.tasks.mab import BernoulliBandit, VerbalMultiArmedBandit
+from banditbench.agents.llm import LLMAgent
+from banditbench.agents.classics import UCBAgent
+
+# this is a 5-armed bandit, it allows any agent to interact with it 100 times (horizon=100)
+# in particular, this is a BernoulliBandit, which means the reward is sampled from a Bernoulli distribution
+# For each arm, we set the probability of getting a reward to be [0.2, 0.2, 0.2, 0.2, 0.5]
+core_bandit = BernoulliBandit(5, horizon=100, arm_params=[0.2, 0.2, 0.2, 0.2, 0.5])
+
+# this is a verbal bandit, which wraps the core bandit and provides a verbal interface for the agent
+# the scenario is "ClothesShopping", which means the agent will see actions as clothing item names like `shirt`, `pants`, `shoes`, etc.
+verbal_bandit = VerbalMultiArmedBandit(core_bandit, "ClothesShopping")
+
+# we create an agent that summarizes the history of interaction (the summary is using statistics -- not produced by an LLM)
+# LLM uses the summary to make decisions
+agent = LLMAgent.build(verbal_bandit, summary=True, model="gpt-3.5-turbo")
+
+# we run the agent in-context learning on the verbal bandit for 5 trajectories
+llm_result = agent.in_context_learn(verbal_bandit, n_trajs=5)
+
+# we create a UCB agent, which is a classic agent that uses Upper Confidence Bound to make decisions
+classic_agent = UCBAgent(core_bandit)
+
+# we run the classic agent in-context learning on the core bandit for 5 trajectories
+classic_result = classic_agent.in_context_learn(core_bandit, n_trajs=5)
+
+classic_result.plot_performance(llm_result, labels=['UCB', 'GPT-3.5 Turbo'])
+```
+
+Doing this will give you a plot like this:
+
+<p align="center">
+  <img src="https://github.com/allenanie/EVOLvE/blob/main/assets/UCBvsLLM.png?raw=true" alt="UCB vs LLM"/>
+</p>
 
 
 ## 🌍 Environments & 🤖 Agents
