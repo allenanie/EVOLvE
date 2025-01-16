@@ -31,4 +31,4 @@ jobs:
         pip install .
     - name: Run tests
       run: |
-        python tests/unit_tests/run.py
+        python tests/run.py
