@@ -132,7 +132,7 @@ class SampleWithLLMAgent:
     # Using LLMAgent to collect data will produce trajectory, fill in side-info for each action (optional), AND fill in verbal prompt
     # will fill in side-info only if `ag` is in the LLM Agent
 
-    def in_context_learn(self, env: VerbalBandit, n_trajs=20) -> DatasetBuffer:
+    def in_context_learn(self, env: VerbalBandit, n_trajs=20, num_threads=10) -> DatasetBuffer:
         
         is_contextual = hasattr(env.core_bandit, 'feature_dim')
         buffer = DatasetBuffer()
@@ -219,7 +219,7 @@ class SampleWithLLMAgent:
 
         # Update the main progress bar
         with tqdm(total=n_trajs, desc="Collecting trajectories", position=0) as trial_pbar:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
                 futures = [executor.submit(collect_single_trajectory, i, traj_seeds[i], trial_pbar) 
                           for i in range(n_trajs)]
                 
