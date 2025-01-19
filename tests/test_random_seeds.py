@@ -12,7 +12,7 @@ def test_compare_env():
     core_bandit = BernoulliBandit(5, horizon=2, arm_params=[0.2, 0.2, 0.2, 0.2, 0.5], seed=321)
     verbal_bandit = VerbalMultiArmedBandit(core_bandit, "VideoWatching")
 
-    agent = LLMAgent.build(verbal_bandit, summary=True, model="gpt-3.5-turbo")
+    agent = LLMAgent.build_with_env(verbal_bandit, summary=True, model="gpt-3.5-turbo")
     agent.generate = lambda x: "A"
 
     data = agent.in_context_learn(verbal_bandit, 5)

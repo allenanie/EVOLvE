@@ -55,7 +55,7 @@ class MultiArmedBandit(Bandit):
         self.horizon = horizon
         self.arm_params = arm_params
         self.set_seed(seed)
-        self.instance_hardness = instance_hardness
+        self.instance_hardness = instance_hardness  # this is the optimality gap -- the lower this number is, the harder an instance is
         self.validate()
         if seed is not None:
             self.shuffle_arms()
@@ -136,7 +136,8 @@ class BernoulliBandit(MultiArmedBandit):
     @property
     def name(self) -> str:
         # b_vid_arms5_easy
-        return f"b_arms{self.num_arms}_difficulty_{self.instance_hardness:.1f}"
+        instance_hardness_str = f"{self.instance_hardness:.1f}".replace(".", "_")
+        return f"b_arms{self.num_arms}_difficulty_{instance_hardness_str}"
 
 
 def compute_simple_kl(p_mu, q_mu, sigma):
@@ -262,4 +263,4 @@ class VerbalMultiArmedBandit(VerbalBandit):
     @property
     def name(self) -> str:
         # b_vid_arms5_easy
-        return self.core_bandit.name
+        return self.core_bandit.name + "_" + self.bandit_scenario.name

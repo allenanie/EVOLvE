@@ -7,10 +7,11 @@ from banditbench.sampling.sampler import DatasetBuffer, Trajectory
 from banditbench.tasks.mab import BernoulliBandit, VerbalMultiArmedBandit
 
 from banditbench.agents.classics import UCBAgent, LinUCBAgent
+from banditbench.agents.guides import UCBGuide, LinUCBGuide
 from banditbench.agents.llm import (LLMMABAgentRH, LLMMABAgentSH, LLMCBAgentRH, LLMCBAgentRHWithAG, LLMMABAgentSHWithAG,
                                     OracleLLMCBAgentRH, OracleLLMCBAgentRHWithAG, OracleLLMMABAgentSH,
                                     OracleLLMMAbAgentRH, OracleLLMMABAgentSHWithAG)
-from banditbench.agents.guides import UCBGuide, LinUCBGuide
+
 
 from banditbench.tasks.mab.env import Interaction as MABInteraction, VerbalInteraction as MABVerbalInteraction
 from banditbench.tasks.cb.env import Interaction as CBInteraction, VerbalInteraction as CBVerbalInteraction

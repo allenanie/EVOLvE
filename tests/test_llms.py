@@ -231,35 +231,35 @@ def test_cb_agent_sh_with_ag_reset():
 
 def test_general_llm_agent_construction():
     # Test MAB agents
-    agent = LLMAgent.build(verbal_bandit)
+    agent = LLMAgent.build_with_env(verbal_bandit)
     assert isinstance(agent, LLMMABAgentRH)
 
-    agent = LLMAgent.build(verbal_bandit, summary=True)
+    agent = LLMAgent.build_with_env(verbal_bandit, summary=True)
     assert isinstance(agent, LLMMABAgentSH)
 
     guide = UCBGuide(UCBAgent(core_bandit))
-    agent = LLMAgent.build(verbal_bandit, guide)
+    agent = LLMAgent.build_with_env(verbal_bandit, guide)
     assert isinstance(agent, LLMMABAgentSHWithAG)
 
     oracle = UCBAgent(core_bandit)
-    agent = LLMAgent.build(verbal_bandit, oracle)
+    agent = LLMAgent.build_with_env(verbal_bandit, oracle)
     assert isinstance(agent, OracleLLMMAbAgentRH)
 
-    agent = LLMAgent.build(verbal_bandit, guide, oracle)
+    agent = LLMAgent.build_with_env(verbal_bandit, guide, oracle)
     assert isinstance(agent, OracleLLMMABAgentSHWithAG)
 
     # Test CB agents
     init_cb_env()
-    agent = LLMAgent.build(verbal_env)
+    agent = LLMAgent.build_with_env(verbal_env)
     assert isinstance(agent, LLMCBAgentRH)
 
     guide = LinUCBGuide(LinUCBAgent(env))
-    agent = LLMAgent.build(verbal_env, guide)
+    agent = LLMAgent.build_with_env(verbal_env, guide)
     assert isinstance(agent, LLMCBAgentRHWithAG)
 
     oracle = LinUCBAgent(env)
-    agent = LLMAgent.build(verbal_env, oracle)
+    agent = LLMAgent.build_with_env(verbal_env, oracle)
     assert isinstance(agent, OracleLLMCBAgentRH)
 
-    agent = LLMAgent.build(verbal_env, guide, oracle)
+    agent = LLMAgent.build_with_env(verbal_env, guide, oracle)
     assert isinstance(agent, OracleLLMCBAgentRHWithAG)

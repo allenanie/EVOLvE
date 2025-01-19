@@ -4,6 +4,7 @@ from banditbench.tasks.cb.env import State
 
 from pydantic import BaseModel
 
+
 class Agent:
     name: str
 

@@ -35,7 +35,7 @@ def get_trajectory_seeds(env_seed, n_trajs):
 
 class Sample:
 
-    def in_context_learn(self, env: Union[Bandit, ContextualBandit], n_trajs=20) -> DatasetBuffer:
+    def in_context_learn(self, env: Union[Bandit, ContextualBandit], n_trajs=20, *args, **kwargs) -> DatasetBuffer:
         """Collect interactions from environment and store in buffer.
         
         Args:
@@ -80,7 +80,7 @@ class Sample:
 class SampleWithAG:
     # Using AG to collect data will produce trajectory AND fill in side-info for each action
 
-    def in_context_learn(self, env: Union[Bandit, ContextualBandit], n_trajs=20) -> DatasetBuffer:
+    def in_context_learn(self, env: Union[Bandit, ContextualBandit], n_trajs=20, *args, **kwargs) -> DatasetBuffer:
         # AG has an underlying agent
         # but also provides utility class to load in action info
         # we need to both get the interaction from the underlying agent
@@ -218,13 +218,19 @@ class SampleWithLLMAgent:
             return Trajectory(trajectory), ag_info if hasattr(agent_copy, 'ag') else None, verbal_prompts
 
         # Update the main progress bar
-        with tqdm(total=n_trajs, desc="Collecting trajectories", position=0) as trial_pbar:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-                futures = [executor.submit(collect_single_trajectory, i, traj_seeds[i], trial_pbar) 
-                          for i in range(n_trajs)]
-                
-                for future in concurrent.futures.as_completed(futures):
-                    trajectory, ag_info, verbal_prompts = future.result()
+        if num_threads > 1 and n_trajs > 1:
+            with tqdm(total=n_trajs, desc="Collecting trajectories", position=0) as trial_pbar:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+                    futures = [executor.submit(collect_single_trajectory, i, traj_seeds[i], trial_pbar)
+                              for i in range(n_trajs)]
+
+                    for future in concurrent.futures.as_completed(futures):
+                        trajectory, ag_info, verbal_prompts = future.result()
+                        buffer.add(trajectory, ag_info, verbal_prompts)
+        else:
+            with tqdm(total=n_trajs, desc="Collecting trajectories", position=0) as trial_pbar:
+                for i in range(n_trajs):
+                    trajectory, ag_info, verbal_prompts = collect_single_trajectory(i, traj_seeds[i], trial_pbar)
                     buffer.add(trajectory, ag_info, verbal_prompts)
 
         return buffer

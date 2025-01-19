@@ -301,29 +301,29 @@ class OracleLLMCBAgent(LLMCBAgent):
 
 class LLMMABAgentSH(LLMMABAgent, SummaryContextLayer, SampleWithLLMAgent):
     # MAB SH Agent
-    ...
+    name = "MAB_SH_Agent"
 
 
 class LLMMABAgentRH(LLMMABAgent, MABRawContextLayer, SampleWithLLMAgent):
     # MAB RH Agent
-    ...
+    name = "MAB_RH_Agent"
 
 
 class LLMCBAgentRH(LLMCBAgent, CBRawContextLayer, SampleWithLLMAgent):
     # CB RH Agent
-    ...
+    name = "CB_RH_Agent"
 
 
 class OracleLLMMABAgentSH(OracleLLMMABAgent, SummaryContextLayer, SampleWithLLMAgent):
-    ...
+    name = "Oracle_MAB_SH_Agent"
 
 
 class OracleLLMMAbAgentRH(OracleLLMMABAgent, MABRawContextLayer, SampleWithLLMAgent):
-    ...
+    name = "Oracle_MAB_RH_Agent"
 
 
 class OracleLLMCBAgentRH(OracleLLMCBAgent, CBRawContextLayer, SampleWithLLMAgent):
-    ...
+    name = "Oracle_CB_RH_Agent"
 
 
 class MABSummaryWithAlgorithmGuide(SummaryContextLayer):
@@ -429,6 +429,8 @@ class CBRawContextWithAlgorithmGuide(CBRawContextLayer):
 
 class LLMMABAgentSHWithAG(LLMMABAgent, LLM, MABSummaryWithAlgorithmGuide,
                           SampleWithLLMAgent):
+    name = "MAB_SH_AG_Agent"
+
     def __init__(self, env: VerbalBandit,
                  ag: UCBGuide,
                  model: str = "gpt-3.5-turbo",
@@ -502,6 +504,8 @@ class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBRawContextWithAlgorithmGuide,
 
 class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, MABSummaryWithAlgorithmGuide,
                                 SampleWithLLMAgent):
+    name = "Oracle_MAB_SH_AG_Agent"
+
     def __init__(self, env: VerbalBandit,
                  ag: UCBGuide,
                  oracle_agent: MABAgent,
@@ -530,6 +534,8 @@ class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, MABSummaryWithAlgorithmG
 
 class OracleLLMCBAgentRHWithAG(OracleLLMCBAgent, LLM, CBRawContextWithAlgorithmGuide,
                                SampleWithLLMAgent):
+    name = "Oracle_CB_RH_AG_Agent"
+
     def __init__(self, env: VerbalBandit,
                  ag: LinUCBGuide,
                  oracle_agent: CBAgent,
@@ -572,11 +578,26 @@ class OracleLLMCBAgentRHWithAG(OracleLLMCBAgent, LLM, CBRawContextWithAlgorithmG
         return query
 
 
+class LLMAgentBuilder:
+    """This is only a partially initialized agent"""
+
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+    def build_with_env(self, env):
+        return LLMAgent.build_with_env(env, *self.args, **self.kwargs)
+
+    def build(self, env):
+        return LLMAgent.build_with_env(env, *self.args, **self.kwargs)
+
+
 class LLMAgent:
     @classmethod
-    def build(cls, env, *args, **kwargs):
+    def build_with_env(cls, env, *args, **kwargs):
         # Extract ag, oracle_agent, and summary from either args or kwargs
         # we disallow passing in summary flag as an argument (because we can only determine `bool` from `args`, which is too risky)
+
         ag = None
         oracle_agent = None
 
@@ -631,3 +652,35 @@ class LLMAgent:
                 if summary:
                     return LLMMABAgentSH(env, *remaining_args, **kwargs)
                 return LLMMABAgentRH(env, *remaining_args, **kwargs)
+
+    @classmethod
+    def build(cls, *args, **kwargs):
+        # Extract ag, oracle_agent, and summary from either args or kwargs
+        # we disallow passing in summary flag as an argument (because we can only determine `bool` from `args`, which is too risky)
+
+        ag = None
+        oracle_agent = None
+        env = None
+
+        remaining_args = []
+        for arg in args:
+            if hasattr(arg, 'get_action_guide_info'):  # Check if arg is algorithm guide
+                ag = arg
+            elif hasattr(arg, 'act') and hasattr(arg,
+                                                 'update'):  # Check if arg is oracle agent; can be LLM or a classic agent
+                oracle_agent = arg
+            elif hasattr(args, 'action_names'):
+                env = arg
+            else:
+                remaining_args.append(arg)
+
+        # Also check kwargs
+        ag = ag or kwargs.pop('ag', None)
+        oracle_agent = oracle_agent or kwargs.pop('oracle_agent', None)
+        summary = kwargs.pop('summary', False)
+        env = kwargs.pop('env', None)
+
+        if env is not None:
+            return cls.build_with_env(env, ag, oracle_agent, summary, *remaining_args, **kwargs)
+        else:
+            return LLMAgentBuilder(ag, oracle_agent, summary)

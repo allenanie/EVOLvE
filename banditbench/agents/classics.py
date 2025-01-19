@@ -177,3 +177,7 @@ class LinUCBAgent(CBAgent):
         context = context.reshape(-1, 1)
         self.A[action] += context.dot(context.T)
         self.b[action] += reward * context
+
+# add an AgentBuilder
+# and a classicAgent here
+# for delayed execution

@@ -203,6 +203,10 @@ class MovieLensVerbal(VerbalBandit):
         # .split(") (")[0] + ")\""
         return self.get_actions_text(genre=False)
 
+    @property
+    def name(self) -> str:
+        return self.core_bandit.name  # There is only one scenario so no need to mark a difference
+
     def step(self, state: State, action: Action) -> Tuple[State, float, bool, Dict[str, Any]]:
         """
         :param action:   We expect the action string to follow this format:

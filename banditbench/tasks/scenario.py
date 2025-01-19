@@ -3,6 +3,8 @@ from typing import Union, List, Optional
 from banditbench.tasks.typing import State
 
 class BanditScenario:
+    name: str
+
     action_names: List[str]
     action_unit: str
 

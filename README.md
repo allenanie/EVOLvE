@@ -100,7 +100,7 @@ core_bandit = BernoulliBandit(5, horizon=100, arm_params=[0.2, 0.2, 0.2, 0.2, 0.
 verbal_bandit = VerbalMultiArmedBandit(core_bandit, "ClothesShopping")
 
 # we create an LLM agent that uses summary statistics (mean, number of times, etc.)
-agent = LLMAgent.build(verbal_bandit, summary=True, model="gpt-3.5-turbo")
+agent = LLMAgent.build_with_env(verbal_bandit, summary=True, model="gpt-3.5-turbo")
 
 llm_result = agent.in_context_learn(verbal_bandit, n_trajs=5)
 
