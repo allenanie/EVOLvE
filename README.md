@@ -215,6 +215,41 @@ We use a Mixin-based design pattern to provide maximum flexibility and customiza
 - Customize prompt engineering strategies
 - Implement new decision-making algorithms
 
+## 💰 Evaluation Cost
+
+Each of the benchmark has a cost estimation tool for the inference cost. The listed cost is in $ amount which contains
+all trials and repetitions.
+
+```python
+from banditbench import HardCoreBench, HardCorePlusBench, FullBench, CoreBench, MovieBench
+bench = HardCoreBench()
+cost = bench.calculate_eval_cost([
+    'gemini-1.5-pro',
+    'gemini-1.5-flash',
+    'gpt-4o-2024-11-20',
+    "gpt-4o-mini-2024-07-18",
+    "o1-2024-12-17",
+    "o1-mini-2024-09-12",
+    "claude-3-5-sonnet-20241022",
+    "claude-3-5-haiku-20241022"
+])
+```
+
+Cost estimation is performed for a **single** agent with raw history (the longest context). If you evaluate multiple agent,
+you can simply multiply this cost by the number of agents.
+
+| Model                     | Core | HardCore | HardCore+ | FullBench | MovieBench |
+|---------------------------|-------|-----------|---------------|-----------|----------------|
+| gemini-1.5-flash          | 31.05 | 14.91     | 39.18         | 83.44     | 31.05          |
+| gpt-4o-mini-2024-07-18    | 62.10 | 29.83     | 78.36         | 166.88    | 62.10          |
+| claude-3-5-haiku-20241022 | 414.33 | 198.97    | 522.64        | 1113.18   | 414.33         |
+| gemini-1.5-pro            | 517.54 | 248.55    | 652.98        | 1390.69   | 517.54         |
+| gpt-4o-2024-11-20         | 1035.07 | 497.11    | 1305.96       | 2781.38   | 1035.07        |
+| o1-mini-2024-09-12        | 1242.09 | 596.53    | 1567.16       | 3337.66   | 1242.09        |
+| claude-3-5-sonnet-20241022| 1243.00 | 596.91    | 1567.91       | 3339.53   | 1243.00        |
+| o1-2024-12-17             | 6210.45 | 2982.64   | 7835.79       | 16688.31  | 6210.45        |
+
+
 ## 🔧 Customization
 
 ### Adding Custom Multi-Armed Bandit Scenarios

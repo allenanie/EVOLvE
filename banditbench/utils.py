@@ -2,10 +2,9 @@ import numpy as np
 import scipy
 import scipy.stats
 import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
 
 from typing import List, Dict
+from litellm.cost_calculator import completion_cost
 
 plt.rcParams.update(
     {
@@ -148,3 +147,12 @@ def plot_multi_cumulative_reward(config_name_to_all_rewards: Dict[str, List[List
         plt.savefig(filename, dpi=120, bbox_inches='tight')
 
     plt.show()
+
+def calculate_cost(model, input_seq, output_seq):
+    """
+    Calculate the cost in dollars for a given sequence of tokens.
+
+    Returns:
+        dict: The input and output costs (in dollars).
+    """
+    return completion_cost(model=model, prompt=input_seq, completion=output_seq)

@@ -1,1 +1,1 @@
-from banditbench.bench import HardCoreBench, HardCorePlusBench, MovieBench, FullBench
+from banditbench.bench import HardCoreBench, HardCorePlusBench, MovieBench, FullBench, CoreBench

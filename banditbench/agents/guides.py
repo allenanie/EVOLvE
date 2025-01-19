@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Tuple
 import scipy
 import numpy as np
 from pydantic import BaseModel
@@ -15,6 +15,15 @@ class VerbalGuide:
 
     def __init__(self, agent: Union[MABAgent, CBAgent]):
         self.agent = agent
+    
+    def parse_args_is_agent(self, *args: List[str]) -> Tuple[bool, Any]:
+        for arg in args:
+            if hasattr(arg, 'act') and hasattr(arg, 'update'):
+                return True, arg
+            elif hasattr(arg, 'horizon'):
+                return False, arg
+        
+        raise ValueError("Unknown argument type. Please pass in the environment or the agent.")
 
     def get_action_guide_info(self, arm: int) -> ActionInfo:
         raise NotImplementedError("Only for MAB agents")
@@ -31,8 +40,16 @@ class VerbalGuide:
 
 class UCBGuide(VerbalGuide, SampleWithAG):
     # takes in UCBAgent and then return info on each arm (a block of text)
-    def __init__(self, agent: UCBAgent):
-        super().__init__(agent)
+    def __init__(self, *args, **kwargs):
+        """
+        :param args: Should be either env or agent. Can pass in flags to agent through kwargs (like "alpha=0.5")
+        :param agent:
+        """
+        is_agent, arg = self.parse_args_is_agent(*args)
+        if is_agent:
+            super().__init__(arg)
+        else:
+            super().__init__(UCBAgent(arg, **kwargs))
 
     def get_actions_guide_info(self) -> List[ActionInfo]:
         actions_info = []
@@ -53,8 +70,16 @@ class UCBGuide(VerbalGuide, SampleWithAG):
 
 
 class GreedyGuide(VerbalGuide, SampleWithAG):
-    def __init__(self, agent: GreedyAgent):
-        super().__init__(agent)
+    def __init__(self, *args, **kwargs):
+        """
+        :param args: Should be either env or agent. Can pass in flags to agent through kwargs (like "alpha=0.5")
+        :param agent:
+        """
+        is_agent, arg = self.parse_args_is_agent(*args)
+        if is_agent:
+            super().__init__(arg)
+        else:
+            super().__init__(GreedyAgent(arg, **kwargs))
 
     def get_actions_guide_info(self) -> List[ActionInfo]:
         actions_info = []
@@ -71,8 +96,16 @@ class GreedyGuide(VerbalGuide, SampleWithAG):
 
 
 class ThompsonSamplingGuide(VerbalGuide, SampleWithAG):
-    def __init__(self, agent: ThompsonSamplingAgent):
-        super().__init__(agent)
+    def __init__(self, *args, **kwargs):
+        """
+        :param args: Should be either env or agent. Can pass in flags to agent through kwargs (like "alpha=0.5")
+        :param agent:
+        """
+        is_agent, arg = self.parse_args_is_agent(*args)
+        if is_agent:
+            super().__init__(arg)
+        else:
+            super().__init__(ThompsonSamplingAgent(arg, **kwargs))
 
     def get_actions_guide_info(self) -> List[ActionInfo]:
         actions_info = []
@@ -96,8 +129,16 @@ class ThompsonSamplingGuide(VerbalGuide, SampleWithAG):
 
 
 class LinUCBGuide(VerbalGuide, SampleWithAG):
-    def __init__(self, agent: LinUCBAgent):
-        super().__init__(agent)
+    def __init__(self, *args, **kwargs):
+        """
+        :param args: Should be either env or agent. Can pass in flags to agent through kwargs (like "alpha=0.5")
+        :param agent:
+        """
+        is_agent, arg = self.parse_args_is_agent(*args)
+        if is_agent:
+            super().__init__(arg)
+        else:
+            super().__init__(LinUCBAgent(arg, **kwargs))
 
     def get_state_action_guide_info(self, state: State, arm: int) -> ActionInfo:
         a = arm

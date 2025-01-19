@@ -28,6 +28,8 @@ def test_ts_guide():
     ts_agent.reset()
 
     ts_guide = ThompsonSamplingGuide(ts_agent)
+    ts_guide = ThompsonSamplingGuide(core_bandit)
+    ts_guide = ThompsonSamplingGuide(core_bandit, alpha_prior=2.0)
     print(ts_guide.get_action_guide_info(0).to_str())
 
 test_action_info_field()
