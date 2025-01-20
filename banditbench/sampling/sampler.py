@@ -33,7 +33,7 @@ def get_trajectory_seeds(env_seed, n_trajs):
     rng = np.random.RandomState(env_seed)
     return rng.randint(0, 2**32-1, size=n_trajs)
 
-class Sample:
+class SampleBase:
 
     def in_context_learn(self, env: Union[Bandit, ContextualBandit], n_trajs=20, *args, **kwargs) -> DatasetBuffer:
         """Collect interactions from environment and store in buffer.
@@ -77,7 +77,7 @@ class Sample:
             buffer.append(Trajectory(trajectory))
 
         return buffer
-class SampleWithVerbalGuide:
+class VerbalGuideSampleBase:
     # Using AG to collect data will produce trajectory AND fill in side-info for each action
 
     def in_context_learn(self, env: Union[Bandit, ContextualBandit], n_trajs=20, *args, **kwargs) -> DatasetBuffer:
@@ -128,7 +128,7 @@ class SampleWithVerbalGuide:
 
         return buffer
 
-class SampleWithLLMAgent:
+class AgentSampleBase:
     # Using LLMAgent to collect data will produce trajectory, fill in side-info for each action (optional), AND fill in verbal prompt
     # will fill in side-info only if `ag` is in the LLM Agent
 

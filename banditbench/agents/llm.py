@@ -2,13 +2,13 @@ from typing import Optional, List, Any, Dict
 
 import litellm
 
-from banditbench.agents.context import ContextLayer, RawContextLayerMAB, RawContextLayerCB, SummaryContextLayerMAB, \
+from banditbench.agents.context import ModelContextLayer, RawContextLayerMAB, RawContextLayerCB, SummaryContextLayerMAB, \
     SummaryAlgoGuideLayerMAB, RawContextAlgoGuideLayerCB
 
 from banditbench.agents.guides import UCBGuide, LinUCBGuide
 from banditbench.tasks.types import State
 from banditbench.tasks.env import VerbalBandit
-from banditbench.sampling.sampler import SampleWithLLMAgent
+from banditbench.sampling.sampler import AgentSampleBase
 
 import banditbench.tasks.cb as cb
 import banditbench.tasks.mab as mab
@@ -41,7 +41,7 @@ class LLM:
         return response.choices[0].message.content
 
 
-class LLMMABAgentBase(MABAgent, LLM, ContextLayer):
+class LLMMABAgentBase(MABAgent, LLM, ModelContextLayer):
     """LLM-based multi-armed bandit agent."""
 
     interaction_history: List[mab.VerbalInteraction]
@@ -55,7 +55,7 @@ class LLMMABAgentBase(MABAgent, LLM, ContextLayer):
                  verbose=False):
         MABAgent.__init__(self, env)
         LLM.__init__(self, model)
-        ContextLayer.__init__(self, history_context_len)
+        ModelContextLayer.__init__(self, history_context_len)
         self.demos = None  # few-shot demos, not reset, and only specified by FewShot class
         self.verbose = verbose
 
@@ -104,7 +104,7 @@ class LLMMABAgentBase(MABAgent, LLM, ContextLayer):
         return query
 
 
-class LLMCBAgentBase(CBAgent, LLM, ContextLayer):
+class LLMCBAgentBase(CBAgent, LLM, ModelContextLayer):
     """LLM-based contextual bandit agent."""
 
     interaction_history: List[cb.VerbalInteraction]
@@ -119,7 +119,7 @@ class LLMCBAgentBase(CBAgent, LLM, ContextLayer):
                  verbose=False):
         CBAgent.__init__(self, env)
         LLM.__init__(self, model)
-        ContextLayer.__init__(self, history_context_len)
+        ModelContextLayer.__init__(self, history_context_len)
         self.demos = None
         self.verbose = verbose
 
@@ -224,35 +224,35 @@ class OracleLLMCBAgent(LLMCBAgentBase):
         self.oracle_agent.reset()
 
 
-class LLMMABAgentSH(LLMMABAgentBase, SummaryContextLayerMAB, SampleWithLLMAgent):
+class LLMMABAgentSH(LLMMABAgentBase, SummaryContextLayerMAB, AgentSampleBase):
     # MAB SH Agent
     name = "MAB_SH_Agent"
 
 
-class LLMMABAgentRH(LLMMABAgentBase, RawContextLayerMAB, SampleWithLLMAgent):
+class LLMMABAgentRH(LLMMABAgentBase, RawContextLayerMAB, AgentSampleBase):
     # MAB RH Agent
     name = "MAB_RH_Agent"
 
 
-class LLMCBAgentRH(LLMCBAgentBase, RawContextLayerCB, SampleWithLLMAgent):
+class LLMCBAgentRH(LLMCBAgentBase, RawContextLayerCB, AgentSampleBase):
     # CB RH Agent
     name = "CB_RH_Agent"
 
 
-class OracleLLMMABAgentSH(OracleLLMMABAgent, SummaryContextLayerMAB, SampleWithLLMAgent):
+class OracleLLMMABAgentSH(OracleLLMMABAgent, SummaryContextLayerMAB, AgentSampleBase):
     name = "Oracle_MAB_SH_Agent"
 
 
-class OracleLLMMAbAgentRH(OracleLLMMABAgent, RawContextLayerMAB, SampleWithLLMAgent):
+class OracleLLMMAbAgentRH(OracleLLMMABAgent, RawContextLayerMAB, AgentSampleBase):
     name = "Oracle_MAB_RH_Agent"
 
 
-class OracleLLMCBAgentRH(OracleLLMCBAgent, RawContextLayerCB, SampleWithLLMAgent):
+class OracleLLMCBAgentRH(OracleLLMCBAgent, RawContextLayerCB, AgentSampleBase):
     name = "Oracle_CB_RH_Agent"
 
 
 class LLMMABAgentSHWithAG(LLMMABAgentBase, LLM, SummaryAlgoGuideLayerMAB,
-                          SampleWithLLMAgent):
+                          AgentSampleBase):
     name = "MAB_SH_AG_Agent"
 
     def __init__(self, env: VerbalBandit,
@@ -278,7 +278,7 @@ class LLMMABAgentSHWithAG(LLMMABAgentBase, LLM, SummaryAlgoGuideLayerMAB,
 
 
 class LLMCBAgentRHWithAG(LLMCBAgentBase, LLM, RawContextAlgoGuideLayerCB,
-                         SampleWithLLMAgent):
+                         AgentSampleBase):
     def __init__(self, env: VerbalBandit,
                  ag: LinUCBGuide,
                  model: str = "gpt-3.5-turbo",
@@ -327,7 +327,7 @@ class LLMCBAgentRHWithAG(LLMCBAgentBase, LLM, RawContextAlgoGuideLayerCB,
 
 
 class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, SummaryAlgoGuideLayerMAB,
-                                SampleWithLLMAgent):
+                                AgentSampleBase):
     name = "Oracle_MAB_SH_AG_Agent"
 
     def __init__(self, env: VerbalBandit,
@@ -357,7 +357,7 @@ class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, SummaryAlgoGuideLayerMAB
 
 
 class OracleLLMCBAgentRHWithAG(OracleLLMCBAgent, LLM, RawContextAlgoGuideLayerCB,
-                               SampleWithLLMAgent):
+                               AgentSampleBase):
     name = "Oracle_CB_RH_AG_Agent"
 
     def __init__(self, env: VerbalBandit,

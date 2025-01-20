@@ -9,7 +9,7 @@ import banditbench.tasks.mab as mab
 from banditbench.agents.types import MABAgent, CBAgent, ActionInfo
 
 
-class ContextLayer:
+class ModelContextLayer:
     interaction_history: List[Union[mab.VerbalInteraction, cb.VerbalInteraction]]
     history_context_len: int
 
@@ -27,7 +27,7 @@ class ContextLayer:
         self.interaction_history = []
 
 
-class RawContextLayerMAB(ContextLayer):
+class RawContextLayerMAB(ModelContextLayer):
     """Formats raw interaction history for LLM prompt."""
 
     def represent_interaction_context(self, action_names: List[str], action_unit: str,
@@ -44,7 +44,7 @@ class RawContextLayerMAB(ContextLayer):
         return snippet
 
 
-class RawContextLayerCB(ContextLayer):
+class RawContextLayerCB(ModelContextLayer):
     def represent_interaction_context(self, action_names: List[str], action_unit: str,
                                       history_len: int) -> str:
         if len(self.interaction_history) == 0:
@@ -61,7 +61,7 @@ class RawContextLayerCB(ContextLayer):
         return snippet
 
 
-class SummaryContextLayerMAB(ContextLayer):
+class SummaryContextLayerMAB(ModelContextLayer):
     """Summarizes interaction history for LLM prompt."""
 
     def represent_interaction_context(self, action_names: List[str], action_unit: str,

@@ -8,10 +8,10 @@ from banditbench.tasks.cb.env import State
 from typing import Union, Dict, Any
 
 from banditbench.agents.types import MABAgent, CBAgent
-from banditbench.sampling.sampler import Sample
+from banditbench.sampling.sampler import SampleBase
 
 
-class UCBAgent(MABAgent, Sample):
+class UCBAgent(MABAgent, SampleBase):
     """alpha-UCB, where alpha is the exploration bonus coefficient"""
     name: str = "UCB"
 
@@ -68,7 +68,7 @@ class UCBAgent(MABAgent, Sample):
         self.rewards[action] += reward
 
 
-class GreedyAgent(UCBAgent):
+class GreedyAgent(UCBAgent, SampleBase):
     """
     This class shows how we can just override the calculate_arm_value() method to implement a different agent.
     """
@@ -81,7 +81,7 @@ class GreedyAgent(UCBAgent):
         return self.rewards[arm] / self.arms[arm]
 
 
-class ThompsonSamplingAgent(UCBAgent):
+class ThompsonSamplingAgent(UCBAgent, SampleBase):
     name: str = "ThompsonSampling"
 
     def __init__(self, env: MultiArmedBandit, alpha_prior: float = 1.0, beta_prior: float = 1.0) -> None:
@@ -109,7 +109,7 @@ class ThompsonSamplingAgent(UCBAgent):
 
 # ======= Contextual Bandit ==========
 
-class LinUCBAgent(CBAgent):
+class LinUCBAgent(CBAgent, SampleBase):
     name: str = 'LinUCB'
 
     def __init__(self, env: ContextualBandit, alpha: float = 0.5):

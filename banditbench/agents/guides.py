@@ -5,10 +5,10 @@ from pydantic import BaseModel
 from banditbench.agents.classics import MABAgent, CBAgent, UCBAgent, ThompsonSamplingAgent, GreedyAgent, LinUCBAgent
 from banditbench.tasks.cb.env import State
 from banditbench.agents.types import ActionInfo, ActionInfoField
-from banditbench.sampling.sampler import SampleWithVerbalGuide
+from banditbench.sampling.sampler import VerbalGuideSampleBase
 
 
-class VerbalGuideBase:
+class VerbalGuideBase(VerbalGuideSampleBase):
     # VerbalGuide can be retrieved in two ways:
     # it's a verbal analog of a Q-function
     # Q(s=None, a) # MAB
@@ -39,7 +39,7 @@ class VerbalGuideBase:
         raise NotImplementedError("Only for RL and CB agents")
 
 
-class UCBGuide(VerbalGuideBase, SampleWithVerbalGuide):
+class UCBGuide(VerbalGuideBase):
     # takes in UCBAgent and then return info on each arm (a block of text)
     def __init__(self, *args, **kwargs):
         """
@@ -70,7 +70,7 @@ class UCBGuide(VerbalGuideBase, SampleWithVerbalGuide):
         return exp_bonus_guide + exp_value_guide
 
 
-class GreedyGuide(VerbalGuideBase, SampleWithVerbalGuide):
+class GreedyGuide(VerbalGuideBase):
     def __init__(self, *args, **kwargs):
         """
         :param args: Should be either env or agent. Can pass in flags to agent through kwargs (like "alpha=0.5")
@@ -96,7 +96,7 @@ class GreedyGuide(VerbalGuideBase, SampleWithVerbalGuide):
         return arm_info
 
 
-class ThompsonSamplingGuide(VerbalGuideBase, SampleWithVerbalGuide):
+class ThompsonSamplingGuide(VerbalGuideBase):
     def __init__(self, *args, **kwargs):
         """
         :param args: Should be either env or agent. Can pass in flags to agent through kwargs (like "alpha=0.5")
@@ -129,7 +129,7 @@ class ThompsonSamplingGuide(VerbalGuideBase, SampleWithVerbalGuide):
         return alpha_guide + beta_guide + probability_guide
 
 
-class LinUCBGuide(VerbalGuideBase, SampleWithVerbalGuide):
+class LinUCBGuide(VerbalGuideBase):
     def __init__(self, *args, **kwargs):
         """
         :param args: Should be either env or agent. Can pass in flags to agent through kwargs (like "alpha=0.5")
