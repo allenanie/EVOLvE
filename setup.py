@@ -12,7 +12,6 @@ install_requires = [
     "pydantic==2.10.5",
     "litellm",
     "pandas",
-    "jinja2==3.1.2",
     "tensorflow_datasets==4.9.7",
     "tensorflow==2.15.0",
     "numpy==1.24.3",
