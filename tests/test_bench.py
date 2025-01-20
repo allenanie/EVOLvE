@@ -11,7 +11,9 @@ def test_calculate_core_bench_cost():
         "o1-2024-12-17",
         "o1-mini-2024-09-12",
         "claude-3-5-sonnet-20241022",
-        "claude-3-5-haiku-20241022"
+        "claude-3-5-haiku-20241022",
+        "deepseek/deepseek-chat",
+        # "deepseek/deepseek-reasoner"
     ])
 
 
@@ -26,7 +28,9 @@ def test_calculate_hardcore_bench_cost():
         "o1-2024-12-17",
         "o1-mini-2024-09-12",
         "claude-3-5-sonnet-20241022",
-        "claude-3-5-haiku-20241022"
+        "claude-3-5-haiku-20241022",
+        "deepseek/deepseek-chat",
+        # "deepseek/deepseek-reasoner"
     ])
 
 def test_calculate_hardcore_plus_bench_cost():
@@ -40,7 +44,8 @@ def test_calculate_hardcore_plus_bench_cost():
         "o1-2024-12-17",
         "o1-mini-2024-09-12",
         "claude-3-5-sonnet-20241022",
-        "claude-3-5-haiku-20241022"
+        "claude-3-5-haiku-20241022",
+        "deepseek/deepseek-chat",
     ])
 
 def test_calculate_full_bench_cost():
@@ -54,7 +59,8 @@ def test_calculate_full_bench_cost():
         "o1-2024-12-17",
         "o1-mini-2024-09-12",
         "claude-3-5-sonnet-20241022",
-        "claude-3-5-haiku-20241022"
+        "claude-3-5-haiku-20241022",
+        "deepseek/deepseek-chat"
     ])
 
 # def test_calculate_moviebench_cost():

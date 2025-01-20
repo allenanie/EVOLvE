@@ -41,7 +41,7 @@ class LLM:
         return response.choices[0].message.content
 
 
-class LLMMABAgentBase(MABAgent, LLM, ModelContextLayer):
+class LLMMABAgentBase(MABAgent, LLM, ModelContextLayer, AgentSampleBase):
     """LLM-based multi-armed bandit agent."""
 
     interaction_history: List[mab.VerbalInteraction]
@@ -79,10 +79,6 @@ class LLMMABAgentBase(MABAgent, LLM, ModelContextLayer):
         assert type(info['interaction']) is mab.VerbalInteraction
         self.interaction_history.append(info['interaction'])
 
-    def represent_interaction_context(self, action_names: List[str], action_unit: str,
-                                      history_len: int) -> str:
-        raise NotImplementedError
-
     def represent_history(self) -> str:
         return self.represent_interaction_context(self.env.action_names, self.env.bandit_scenario.action_unit,
                                                   self.history_context_len)
@@ -104,7 +100,7 @@ class LLMMABAgentBase(MABAgent, LLM, ModelContextLayer):
         return query
 
 
-class LLMCBAgentBase(CBAgent, LLM, ModelContextLayer):
+class LLMCBAgentBase(CBAgent, LLM, ModelContextLayer, AgentSampleBase):
     """LLM-based contextual bandit agent."""
 
     interaction_history: List[cb.VerbalInteraction]
@@ -136,10 +132,6 @@ class LLMCBAgentBase(CBAgent, LLM, ModelContextLayer):
 
         response = self.generate(task_instruction + history_context + query)
         return response
-
-    def represent_interaction_context(self, action_names: List[str], action_unit: str,
-                                      history_len: int) -> str:
-        raise NotImplementedError
 
     def represent_history(self) -> str:
         return self.represent_interaction_context(self.env.action_names, self.env.bandit_scenario.action_unit,
@@ -224,35 +216,34 @@ class OracleLLMCBAgent(LLMCBAgentBase):
         self.oracle_agent.reset()
 
 
-class LLMMABAgentSH(LLMMABAgentBase, SummaryContextLayerMAB, AgentSampleBase):
+class LLMMABAgentSH(LLMMABAgentBase, SummaryContextLayerMAB):
     # MAB SH Agent
     name = "MAB_SH_Agent"
 
 
-class LLMMABAgentRH(LLMMABAgentBase, RawContextLayerMAB, AgentSampleBase):
+class LLMMABAgentRH(LLMMABAgentBase, RawContextLayerMAB):
     # MAB RH Agent
     name = "MAB_RH_Agent"
 
 
-class LLMCBAgentRH(LLMCBAgentBase, RawContextLayerCB, AgentSampleBase):
+class LLMCBAgentRH(LLMCBAgentBase, RawContextLayerCB):
     # CB RH Agent
     name = "CB_RH_Agent"
 
 
-class OracleLLMMABAgentSH(OracleLLMMABAgent, SummaryContextLayerMAB, AgentSampleBase):
+class OracleLLMMABAgentSH(OracleLLMMABAgent, SummaryContextLayerMAB):
     name = "Oracle_MAB_SH_Agent"
 
 
-class OracleLLMMAbAgentRH(OracleLLMMABAgent, RawContextLayerMAB, AgentSampleBase):
+class OracleLLMMAbAgentRH(OracleLLMMABAgent, RawContextLayerMAB):
     name = "Oracle_MAB_RH_Agent"
 
 
-class OracleLLMCBAgentRH(OracleLLMCBAgent, RawContextLayerCB, AgentSampleBase):
+class OracleLLMCBAgentRH(OracleLLMCBAgent, RawContextLayerCB):
     name = "Oracle_CB_RH_Agent"
 
 
-class LLMMABAgentSHWithAG(LLMMABAgentBase, LLM, SummaryAlgoGuideLayerMAB,
-                          AgentSampleBase):
+class LLMMABAgentSHWithAG(LLMMABAgentBase, LLM, SummaryAlgoGuideLayerMAB):
     name = "MAB_SH_AG_Agent"
 
     def __init__(self, env: VerbalBandit,
@@ -277,8 +268,7 @@ class LLMMABAgentSHWithAG(LLMMABAgentBase, LLM, SummaryAlgoGuideLayerMAB,
         self.ag.agent.reset()
 
 
-class LLMCBAgentRHWithAG(LLMCBAgentBase, LLM, RawContextAlgoGuideLayerCB,
-                         AgentSampleBase):
+class LLMCBAgentRHWithAG(LLMCBAgentBase, LLM, RawContextAlgoGuideLayerCB):
     def __init__(self, env: VerbalBandit,
                  ag: LinUCBGuide,
                  model: str = "gpt-3.5-turbo",
@@ -326,8 +316,7 @@ class LLMCBAgentRHWithAG(LLMCBAgentBase, LLM, RawContextAlgoGuideLayerCB,
         return response
 
 
-class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, SummaryAlgoGuideLayerMAB,
-                                AgentSampleBase):
+class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, SummaryAlgoGuideLayerMAB):
     name = "Oracle_MAB_SH_AG_Agent"
 
     def __init__(self, env: VerbalBandit,
@@ -356,8 +345,7 @@ class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, SummaryAlgoGuideLayerMAB
         self.ag.agent.reset()
 
 
-class OracleLLMCBAgentRHWithAG(OracleLLMCBAgent, LLM, RawContextAlgoGuideLayerCB,
-                               AgentSampleBase):
+class OracleLLMCBAgentRHWithAG(OracleLLMCBAgent, LLM, RawContextAlgoGuideLayerCB):
     name = "Oracle_CB_RH_AG_Agent"
 
     def __init__(self, env: VerbalBandit,
