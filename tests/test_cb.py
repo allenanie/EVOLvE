@@ -1,5 +1,5 @@
 import numpy as np
-from banditbench.tasks.typing import State
+from banditbench.tasks.types import State
 from banditbench.tasks.cb.movielens import MovieLens, MovieLensVerbal
 
 def test_save_state():

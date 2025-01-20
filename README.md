@@ -30,7 +30,8 @@
 
 </div>
 
-EVOLvE is a framework for evaluating Large Language Models (LLMs) for In-Context Reinforcement Learning (ICRL). We provide a flexible framework for single-step RL experiments (bandit) with LLMs. This repository contains the code to reproduce the results from the EVOLvE paper.
+EVOLvE is a framework for evaluating Large Language Models (LLMs) for In-Context Reinforcement Learning (ICRL). 
+We provide a flexible framework for experimenting with different LLM Agent Context Layers and analyzing how they affect a model's ability to interact with RL environments (bandits). This repository contains the code to reproduce results from our EVOLvE paper.
 
 ## 📰 News
 
@@ -42,7 +43,7 @@ EVOLvE is a framework for evaluating Large Language Models (LLMs) for In-Context
 
 - Flexible framework for evaluating LLMs for In-Context Reinforcement Learning (ICRL)
 - Support for both multi-armed and contextual bandit scenarios
-- Mixin-based design for highly customizable LLM agents
+- Mixin-based design for LLM agents with customizable **Context Layers**
 - Built-in support for few-shot learning and demonstration
 - Includes popular benchmark environments (e.g., MovieLens)
 
@@ -140,15 +141,27 @@ cost = bench.calculate_eval_cost([
 ])
 ```
 
+You can evaluate an agent by doing:
+```python
+from banditbench.agents.llm import LLMAgent
+from banditbench.agents.guide import UCBGuide
+
+env_to_agent_results = bench.evaluate([
+  LLMAgent.build(),  # Raw History Context Layer
+  LLMAgent.build(summary=True),  # Summary Context Layer
+  LLMAgent.build(summary=True, guide=UCBGuide(env))  # Summary + UCB Guide Context Layer
+])
+```
+
 Cost estimation is performed for a **single** agent with raw history (the longest context). If you evaluate multiple agent,
 you can simply multiply this cost by the number of agents.
 
 | Model                     | Core     | HardCore     | HardCore+     | Full      | MovieBench     |
 |---------------------------|----------|--------------|---------------|-----------|----------------|
-| **gemini-1.5-flash**      | $31.05   | $14.91       | $39.18        | $83.44    | $31.05         |
+| **gemini-1.5-flash**      | **$31.05**   | **$14.91**       | **$39.18**        | **$83.44**    | **$31.05**         |
 | gpt-4o-mini-2024-07-18    | $62.10   | $29.83       | $78.36        | $166.88   | $62.10         |
 | claude-3-5-haiku-20241022 | $414.33  | $198.97      | $522.64       | $1113.18  | $414.33        |
-| **gemini-1.5-pro**        | $517.54  | $248.55      | $652.98       | $1390.69  | $517.54        |
+| **gemini-1.5-pro**        | **$517.54**  | **$248.55**      | **$652.98**       | **$1390.69**  | **$517.54**        |
 | gpt-4o-2024-11-20         | $1035.07 | $497.11      | $1305.96      | $2781.38  | $1035.07       |
 | o1-mini-2024-09-12        | $1242.09 | $596.53      | $1567.16      | $3337.66  | $1242.09       |
 | claude-3-5-sonnet-20241022| $1243.00 | $596.91      | $1567.91      | $3339.53  | $1243.00       |

@@ -5,7 +5,7 @@ import numpy as np
 
 from typing import Dict, Any, Tuple, Union, List, Optional
 
-from banditbench.tasks.typing import Action, State, Info
+from banditbench.tasks.types import Action, State, Info
 from banditbench.tasks.env import VerbalBandit
 from banditbench.tasks.cb.env import Interaction, VerbalInteraction
 

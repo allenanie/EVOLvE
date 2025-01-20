@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Union, Dict, Any, List
 from banditbench.tasks.env import VerbalBandit, Bandit
 from banditbench.tasks.cb.env import ContextualBandit
-from banditbench.tasks.typing import Trajectory
+from banditbench.tasks.types import Trajectory
 
-from banditbench.sampling.typing import DatasetBuffer
+from banditbench.sampling.types import DatasetBuffer
 
 import concurrent.futures
 from tqdm import tqdm
@@ -77,7 +77,7 @@ class Sample:
             buffer.append(Trajectory(trajectory))
 
         return buffer
-class SampleWithAG:
+class SampleWithVerbalGuide:
     # Using AG to collect data will produce trajectory AND fill in side-info for each action
 
     def in_context_learn(self, env: Union[Bandit, ContextualBandit], n_trajs=20, *args, **kwargs) -> DatasetBuffer:

@@ -7,7 +7,7 @@ from banditbench.tasks.cb.env import State
 
 from typing import Union, Dict, Any
 
-from banditbench.agents.typing import MABAgent, CBAgent
+from banditbench.agents.types import MABAgent, CBAgent
 from banditbench.sampling.sampler import Sample
 
 

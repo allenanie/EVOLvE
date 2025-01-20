@@ -3,7 +3,7 @@ from typing import Dict, Any, Tuple, Union, List, Optional
 import numpy as np
 from banditbench.tasks.scenario import MABScenario
 from banditbench.tasks.mab.scenarios import ButtonPushing, OnlineAds, VideoWatching, ClothesShopping
-from banditbench.tasks.typing import Action, ExpectedReward, InteractionBase
+from banditbench.tasks.types import Action, ExpectedReward, InteractionBase
 from banditbench.tasks.env import Bandit, VerbalBandit
 
 BernArmParam = float

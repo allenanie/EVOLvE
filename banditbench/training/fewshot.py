@@ -1,6 +1,6 @@
 from typing import Optional, List, Any, Dict, Union
 from banditbench.sampling.sampler import DatasetBuffer
-from banditbench.agents.llm import LLMMABAgent, LLMCBAgent
+from banditbench.agents.llm import LLMMABAgentBase, LLMCBAgentBase
 
 class FewShot:
     """
@@ -23,12 +23,12 @@ class FewShot:
     traj_idx: int = 0  # which trajectory we choose from the datasource
 
     @classmethod
-    def empower(cls, agent: Union[LLMMABAgent, LLMCBAgent],
+    def empower(cls, agent: Union[LLMMABAgentBase, LLMCBAgentBase],
                 datasource: Optional[Union[DatasetBuffer, str]] = None,
                 num_examples: Optional[int] = None,
                 skip_first: Optional[int] = None,
                 sample_freq: Optional[int] = None,
-                traj_idx: Optional[int] = None) -> Union[LLMMABAgent, LLMCBAgent]:
+                traj_idx: Optional[int] = None) -> Union[LLMMABAgentBase, LLMCBAgentBase]:
         """
         This is the general "compilation" function that takes in the agent
 
@@ -59,15 +59,15 @@ class FewShot:
             cls.sample_freq = sample_freq
 
         # then determine MAB or CB to load the examples into agent
-        if isinstance(agent, LLMMABAgent):
+        if isinstance(agent, LLMMABAgentBase):
             agent.demos = cls.load_few_shot_mab_examples(agent)
-        elif isinstance(agent, LLMCBAgent):
+        elif isinstance(agent, LLMCBAgentBase):
             agent.demos = cls.load_few_shot_cb_examples(agent)
 
         return agent
 
     @classmethod
-    def load_few_shot_mab_examples(cls, agent: Union[LLMMABAgent, LLMCBAgent]) -> Optional[str]:
+    def load_few_shot_mab_examples(cls, agent: Union[LLMMABAgentBase, LLMCBAgentBase]) -> Optional[str]:
         """This has to be different """
         if cls.data_buffer is None:
             return None
@@ -89,7 +89,7 @@ class FewShot:
             return fewshot_prompt
 
     @classmethod
-    def load_few_shot_cb_examples(cls, agent: Union[LLMMABAgent, LLMCBAgent]) -> Optional[str]:
+    def load_few_shot_cb_examples(cls, agent: Union[LLMMABAgentBase, LLMCBAgentBase]) -> Optional[str]:
         """This has to be different """
         if cls.data_buffer is None:
             return None

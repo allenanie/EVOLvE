@@ -2,7 +2,7 @@ from typing import Dict, Any, Tuple, Union, List, Optional
 import json
 import numpy as np
 from banditbench.tasks.scenario import BanditScenario
-from banditbench.tasks.typing import Action
+from banditbench.tasks.types import Action
 
 
 class Bandit:

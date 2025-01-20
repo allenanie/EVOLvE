@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import Union, Dict, Any, List
 from banditbench.tasks.env import VerbalBandit, Bandit
 from banditbench.tasks.cb.env import ContextualBandit
-from banditbench.tasks.typing import Trajectory
-from banditbench.agents.typing import Agent, ActionInfo
+from banditbench.tasks.types import Trajectory
+from banditbench.agents.types import Agent, ActionInfo
 
 from banditbench.utils import plot_cumulative_reward, plot_multi_cumulative_reward
 

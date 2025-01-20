@@ -1,15 +1,19 @@
-from typing import Optional, List, Any, Dict, Union
+from typing import Optional, List, Any, Dict
 
 import litellm
-from banditbench.agents.guides import VerbalGuide, UCBGuide, LinUCBGuide, ActionInfo
-from banditbench.tasks.typing import State, Info
+
+from banditbench.agents.context import ContextLayer, RawContextLayerMAB, RawContextLayerCB, SummaryContextLayerMAB, \
+    SummaryAlgoGuideLayerMAB, RawContextAlgoGuideLayerCB
+
+from banditbench.agents.guides import UCBGuide, LinUCBGuide
+from banditbench.tasks.types import State
 from banditbench.tasks.env import VerbalBandit
 from banditbench.sampling.sampler import SampleWithLLMAgent
 
 import banditbench.tasks.cb as cb
 import banditbench.tasks.mab as mab
 
-from banditbench.agents.typing import MABAgent, CBAgent
+from banditbench.agents.types import MABAgent, CBAgent
 
 
 class LLM:
@@ -37,94 +41,7 @@ class LLM:
         return response.choices[0].message.content
 
 
-class ContextLayer:
-    interaction_history: List[Union[mab.VerbalInteraction, cb.VerbalInteraction]]
-    history_context_len: int
-
-    def __init__(self, history_context_len: int):
-        self.interaction_history = []
-        self.history_context_len = history_context_len
-
-    def _represent_interaction_context(self, action_names: List[str], action_unit: str,
-                                       history_len: int) -> str:
-        """Get formatted history for LLM prompt."""
-        # Implement history formatting
-        raise NotImplementedError
-
-    def reset(self):
-        self.interaction_history = []
-
-
-class MABRawContextLayer(ContextLayer):
-    """Formats raw interaction history for LLM prompt."""
-
-    def _represent_interaction_context(self, action_names: List[str], action_unit: str,
-                                       history_len: int) -> str:
-        if len(self.interaction_history) == 0:
-            return ""
-
-        # remember to handle state
-        history_len = min(history_len, len(self.interaction_history))
-        snippet = ""
-        for exp in self.interaction_history[-history_len:]:
-            snippet += f"\n{exp.feedback}"  # MAB feedback contains {action_name} {reward} already
-
-        return snippet
-
-
-class CBRawContextLayer(ContextLayer):
-    def _represent_interaction_context(self, action_names: List[str], action_unit: str,
-                                       history_len: int) -> str:
-        if len(self.interaction_history) == 0:
-            return ""
-
-        # remember to handle state
-        history_len = min(history_len, len(self.interaction_history))
-        snippet = ""
-        for exp in self.interaction_history[-history_len:]:
-            snippet += f"\nContext: {exp.state.feature_text}"
-            snippet += f"\nAction: {exp.mapped_action_name}"  # this is to replicate the same style as the paper
-            snippet += f"\nReward: {exp.reward}\n"
-
-        return snippet
-
-
-class SummaryContextLayer(ContextLayer):
-    """Summarizes interaction history for LLM prompt."""
-
-    def _represent_interaction_context(self, action_names: List[str], action_unit: str,
-                                       history_len: int) -> str:
-        """
-        Note that this function can work with either MAB or CB
-        But for CB, it is not summarizing on the state level
-        """
-        # we traverse through the whole history to summarize
-        if len(self.interaction_history) == 0:
-            return ""
-
-        # compute basic statistics, for each action name
-        # frequency, mean reward
-
-        n_actions = [0] * len(action_names)
-        action_rewards = [0] * len(action_names)
-
-        for exp in self.interaction_history:
-            idx = action_names.index(exp.mapped_action_name)
-            n_actions[idx] += 1
-            action_rewards[idx] += exp.reward
-
-        snippet = ""
-        for action_name, n, total_r in zip(action_names, n_actions, action_rewards):
-            reward = total_r / (n + 1e-6)
-            snippet += (
-                f"\n{action_name} {action_unit}, {n} times, average"
-                f" reward {reward:.2f}"
-            )
-
-        return snippet
-
-
-class LLMMABAgent(MABAgent, LLM, ContextLayer):
+class LLMMABAgentBase(MABAgent, LLM, ContextLayer):
     """LLM-based multi-armed bandit agent."""
 
     interaction_history: List[mab.VerbalInteraction]
@@ -162,9 +79,13 @@ class LLMMABAgent(MABAgent, LLM, ContextLayer):
         assert type(info['interaction']) is mab.VerbalInteraction
         self.interaction_history.append(info['interaction'])
 
+    def represent_interaction_context(self, action_names: List[str], action_unit: str,
+                                      history_len: int) -> str:
+        raise NotImplementedError
+
     def represent_history(self) -> str:
-        return self._represent_interaction_context(self.env.action_names, self.env.bandit_scenario.action_unit,
-                                                   self.history_context_len)
+        return self.represent_interaction_context(self.env.action_names, self.env.bandit_scenario.action_unit,
+                                                  self.history_context_len)
 
     def reset(self):
         super().reset()  # MABAgent.reset()
@@ -183,7 +104,7 @@ class LLMMABAgent(MABAgent, LLM, ContextLayer):
         return query
 
 
-class LLMCBAgent(CBAgent, LLM, ContextLayer):
+class LLMCBAgentBase(CBAgent, LLM, ContextLayer):
     """LLM-based contextual bandit agent."""
 
     interaction_history: List[cb.VerbalInteraction]
@@ -210,20 +131,24 @@ class LLMCBAgent(CBAgent, LLM, ContextLayer):
         task_instruction = self.env.get_task_instruction()
         if self.demos is not None:
             task_instruction += self.demos + '\n'
-        history_context = self.decision_context_start.format(n_interactions) + self.represent_interaction_context()
+        history_context = self.decision_context_start.format(n_interactions) + self.represent_history()
         query = self.env.get_query_prompt(state, side_info=None)
 
         response = self.generate(task_instruction + history_context + query)
         return response
 
+    def represent_interaction_context(self, action_names: List[str], action_unit: str,
+                                      history_len: int) -> str:
+        raise NotImplementedError
+
+    def represent_history(self) -> str:
+        return self.represent_interaction_context(self.env.action_names, self.env.bandit_scenario.action_unit,
+                                                  self.history_context_len)
+
     def update(self, state: State, action: int, reward: float, info: Dict[str, Any]) -> None:
         assert 'interaction' in info
         assert type(info['interaction']) is cb.VerbalInteraction
         self.interaction_history.append(info['interaction'])
-
-    def represent_interaction_context(self) -> str:
-        return self._represent_interaction_context(self.env.action_names, self.env.bandit_scenario.action_unit,
-                                                   self.history_context_len)
 
     def reset(self):
         super().reset()  # MABAgent.reset()
@@ -234,7 +159,7 @@ class LLMCBAgent(CBAgent, LLM, ContextLayer):
         return task_instruction
 
     def get_action_history(self) -> str:
-        history_context = self.represent_interaction_context()
+        history_context = self.represent_history()
         return history_context
 
     def get_decision_query(self, state: State) -> str:
@@ -242,7 +167,7 @@ class LLMCBAgent(CBAgent, LLM, ContextLayer):
         return query
 
 
-class OracleLLMMABAgent(LLMMABAgent):
+class OracleLLMMABAgent(LLMMABAgentBase):
     """Not a full agent"""
 
     def __init__(self, env: VerbalBandit, oracle_agent: MABAgent,
@@ -271,7 +196,7 @@ class OracleLLMMABAgent(LLMMABAgent):
         self.oracle_agent.reset()
 
 
-class OracleLLMCBAgent(LLMCBAgent):
+class OracleLLMCBAgent(LLMCBAgentBase):
     """Not a full agent"""
 
     def __init__(self, env: VerbalBandit, oracle_agent: CBAgent,
@@ -299,135 +224,34 @@ class OracleLLMCBAgent(LLMCBAgent):
         self.oracle_agent.reset()
 
 
-class LLMMABAgentSH(LLMMABAgent, SummaryContextLayer, SampleWithLLMAgent):
+class LLMMABAgentSH(LLMMABAgentBase, SummaryContextLayerMAB, SampleWithLLMAgent):
     # MAB SH Agent
     name = "MAB_SH_Agent"
 
 
-class LLMMABAgentRH(LLMMABAgent, MABRawContextLayer, SampleWithLLMAgent):
+class LLMMABAgentRH(LLMMABAgentBase, RawContextLayerMAB, SampleWithLLMAgent):
     # MAB RH Agent
     name = "MAB_RH_Agent"
 
 
-class LLMCBAgentRH(LLMCBAgent, CBRawContextLayer, SampleWithLLMAgent):
+class LLMCBAgentRH(LLMCBAgentBase, RawContextLayerCB, SampleWithLLMAgent):
     # CB RH Agent
     name = "CB_RH_Agent"
 
 
-class OracleLLMMABAgentSH(OracleLLMMABAgent, SummaryContextLayer, SampleWithLLMAgent):
+class OracleLLMMABAgentSH(OracleLLMMABAgent, SummaryContextLayerMAB, SampleWithLLMAgent):
     name = "Oracle_MAB_SH_Agent"
 
 
-class OracleLLMMAbAgentRH(OracleLLMMABAgent, MABRawContextLayer, SampleWithLLMAgent):
+class OracleLLMMAbAgentRH(OracleLLMMABAgent, RawContextLayerMAB, SampleWithLLMAgent):
     name = "Oracle_MAB_RH_Agent"
 
 
-class OracleLLMCBAgentRH(OracleLLMCBAgent, CBRawContextLayer, SampleWithLLMAgent):
+class OracleLLMCBAgentRH(OracleLLMCBAgent, RawContextLayerCB, SampleWithLLMAgent):
     name = "Oracle_CB_RH_Agent"
 
 
-class MABSummaryWithAlgorithmGuide(SummaryContextLayer):
-    """Provides algorithm guidance text for LLM prompt."""
-    ag: UCBGuide
-    ag_info_history: List[List[ActionInfo]]  # storing side information
-
-    def __init__(self, ag: UCBGuide, history_context_len: int):
-        super().__init__(history_context_len)
-        self.ag = ag
-        self.ag_info_history = []
-        assert type(ag) is UCBGuide, "Only UCBGuide works with SummaryHistory -- since the summary is per action level."
-
-    def update_algorithm_guide(self, action: int, reward: float, info: Dict[str, Any]) -> None:
-        """Enhance update to include algorithm guide updates."""
-        # First call the parent class's update
-        self.ag.agent.update(action, reward, info)
-
-    def update_info_history(self, action_info: List[ActionInfo]) -> None:
-        self.ag_info_history.append(action_info)
-
-    def reset(self):
-        super().reset()  # HistoryFunc.reset()
-        self.ag.agent.reset()
-
-    def _represent_interaction_context(self, action_names: List[str], action_unit: str,
-                                       history_len: int) -> str:
-        """
-        Note that this function can work with either MAB or CB
-        But for CB, it is not summarizing on the state level
-        """
-        # we traverse through the whole history to summarize
-        if len(self.interaction_history) == 0:
-            return ""
-
-        n_actions = [0] * len(action_names)
-        action_rewards = [0] * len(action_names)
-
-        for exp in self.interaction_history:
-            idx = action_names.index(exp.mapped_action_name)
-            n_actions[idx] += 1
-            action_rewards[idx] += exp.reward
-
-        snippet, action_idx = "", 0
-        for action_name, n, total_r in zip(action_names, n_actions, action_rewards):
-            reward = total_r / (n + 1e-6)
-            snippet += (
-                    f"\n{action_name} {action_unit}, {n} times, average"
-                    f" reward {reward:.2f}" + " " + self.ag.get_action_guide_info(action_idx).to_str()
-            )
-            action_idx += 1
-
-        return snippet
-
-
-class CBRawContextWithAlgorithmGuide(CBRawContextLayer):
-    """Provides algorithm guidance text for LLM prompt."""
-    ag: LinUCBGuide
-    ag_info_history: List[List[ActionInfo]]  # storing side information
-
-    def __init__(self, ag: LinUCBGuide, history_context_len: int):
-        super().__init__(history_context_len)
-        self.ag_info_history = []
-        self.ag = ag
-        assert type(ag) is LinUCBGuide, "The information is provided per context, per action"
-
-    def reset(self):
-        super().reset()  # HistoryFunc.reset()
-        self.ag.agent.reset()
-        self.ag_info_history = []
-
-    def update_algorithm_guide(self, state: State, action: int, reward: float, info: Dict[str, Any]) -> None:
-        """Enhance update to include algorithm guide updates."""
-        # First call the parent class's update
-        self.ag.agent.update(state, action, reward, info)
-
-    def update_info_history(self, action_info: List[ActionInfo]) -> None:
-        self.ag_info_history.append(action_info)
-
-    def _represent_interaction_context(self, action_names: List[str], action_unit: str,
-                                       history_len: int) -> str:
-        if len(self.interaction_history) == 0:
-            return ""
-
-        # remember to handle state
-        history_len = min(history_len, len(self.interaction_history))
-        snippet = ""
-        for exp, ag_info in zip(self.interaction_history[-history_len:], self.ag_info_history[-history_len:]):
-            snippet += f"\nContext: {exp.state.feature_text}"
-            snippet += f"\nSide Information for decision making:"
-            for i, action_info in enumerate(ag_info):
-                # normal format
-                # snippet += '\n' + action_names[i].split(") (")[0] + ")" + ": " + action_info.to_str()
-
-                # JSON-like format used in the paper
-                snippet += '\n{\"' + action_names[i] + ": " + action_info.to_str(
-                    json_fmt=True) + "}"
-            snippet += f"\nAction: {exp.mapped_action_name}"
-            snippet += f"\nReward: {exp.reward}\n"
-
-        return snippet
-
-
-class LLMMABAgentSHWithAG(LLMMABAgent, LLM, MABSummaryWithAlgorithmGuide,
+class LLMMABAgentSHWithAG(LLMMABAgentBase, LLM, SummaryAlgoGuideLayerMAB,
                           SampleWithLLMAgent):
     name = "MAB_SH_AG_Agent"
 
@@ -436,10 +260,10 @@ class LLMMABAgentSHWithAG(LLMMABAgent, LLM, MABSummaryWithAlgorithmGuide,
                  model: str = "gpt-3.5-turbo",
                  history_context_len=1000,
                  verbose=False):
-        LLMMABAgent.__init__(self, env)
+        LLMMABAgentBase.__init__(self, env)
         LLM.__init__(self, model)
-        MABSummaryWithAlgorithmGuide.__init__(self, ag,
-                                              history_context_len)
+        SummaryAlgoGuideLayerMAB.__init__(self, ag,
+                                          history_context_len)
         self.verbose = verbose
 
     def update(self, action: int, reward: float, info: Dict[str, Any]) -> None:
@@ -453,17 +277,17 @@ class LLMMABAgentSHWithAG(LLMMABAgent, LLM, MABSummaryWithAlgorithmGuide,
         self.ag.agent.reset()
 
 
-class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBRawContextWithAlgorithmGuide,
+class LLMCBAgentRHWithAG(LLMCBAgentBase, LLM, RawContextAlgoGuideLayerCB,
                          SampleWithLLMAgent):
     def __init__(self, env: VerbalBandit,
                  ag: LinUCBGuide,
                  model: str = "gpt-3.5-turbo",
                  history_context_len=1000,
                  verbose=False):
-        LLMCBAgent.__init__(self, env)
+        LLMCBAgentBase.__init__(self, env)
         LLM.__init__(self, model)
-        CBRawContextWithAlgorithmGuide.__init__(self, ag,
-                                                history_context_len)
+        RawContextAlgoGuideLayerCB.__init__(self, ag,
+                                            history_context_len)
         self.verbose = verbose
 
     def update(self, state: State, action: int, reward: float, info: Dict[str, Any]) -> None:
@@ -502,7 +326,7 @@ class LLMCBAgentRHWithAG(LLMCBAgent, LLM, CBRawContextWithAlgorithmGuide,
         return response
 
 
-class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, MABSummaryWithAlgorithmGuide,
+class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, SummaryAlgoGuideLayerMAB,
                                 SampleWithLLMAgent):
     name = "Oracle_MAB_SH_AG_Agent"
 
@@ -514,8 +338,8 @@ class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, MABSummaryWithAlgorithmG
                  verbose=False):
         OracleLLMMABAgent.__init__(self, env, oracle_agent, model, history_context_len, verbose)
         LLM.__init__(self, model)
-        MABSummaryWithAlgorithmGuide.__init__(self, ag,
-                                              history_context_len)
+        SummaryAlgoGuideLayerMAB.__init__(self, ag,
+                                          history_context_len)
 
     def update(self, action: int, reward: float, info: Dict[str, Any]) -> None:
         # note that we don't have access to the expected reward on the agent side
@@ -532,7 +356,7 @@ class OracleLLMMABAgentSHWithAG(OracleLLMMABAgent, LLM, MABSummaryWithAlgorithmG
         self.ag.agent.reset()
 
 
-class OracleLLMCBAgentRHWithAG(OracleLLMCBAgent, LLM, CBRawContextWithAlgorithmGuide,
+class OracleLLMCBAgentRHWithAG(OracleLLMCBAgent, LLM, RawContextAlgoGuideLayerCB,
                                SampleWithLLMAgent):
     name = "Oracle_CB_RH_AG_Agent"
 
@@ -544,8 +368,8 @@ class OracleLLMCBAgentRHWithAG(OracleLLMCBAgent, LLM, CBRawContextWithAlgorithmG
                  verbose=False):
         OracleLLMCBAgent.__init__(self, env, oracle_agent, model, history_context_len, verbose)
         LLM.__init__(self, model)
-        CBRawContextWithAlgorithmGuide.__init__(self, ag,
-                                                history_context_len)
+        RawContextAlgoGuideLayerCB.__init__(self, ag,
+                                            history_context_len)
 
     def update(self, state: State, action: int, reward: float, info: Dict[str, Any]) -> None:
         assert 'interaction' in info
@@ -683,4 +507,4 @@ class LLMAgent:
         if env is not None:
             return cls.build_with_env(env, ag, oracle_agent, summary, *remaining_args, **kwargs)
         else:
-            return LLMAgentBuilder(ag, oracle_agent, summary)
+            return LLMAgentBuilder(ag, oracle_agent, summary=summary)

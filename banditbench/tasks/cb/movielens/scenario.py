@@ -1,7 +1,7 @@
 import os
 from typing import List, Optional
 
-from banditbench.tasks.typing import State
+from banditbench.tasks.types import State
 from banditbench.utils import dedent
 from banditbench.tasks.scenario import CBScenario
 

@@ -4,10 +4,11 @@ import numpy as np
 from pydantic import BaseModel
 from banditbench.agents.classics import MABAgent, CBAgent, UCBAgent, ThompsonSamplingAgent, GreedyAgent, LinUCBAgent
 from banditbench.tasks.cb.env import State
-from banditbench.agents.typing import ActionInfo, ActionInfoField
-from banditbench.sampling.sampler import SampleWithAG
+from banditbench.agents.types import ActionInfo, ActionInfoField
+from banditbench.sampling.sampler import SampleWithVerbalGuide
 
-class VerbalGuide:
+
+class VerbalGuideBase:
     # VerbalGuide can be retrieved in two ways:
     # it's a verbal analog of a Q-function
     # Q(s=None, a) # MAB
@@ -15,14 +16,14 @@ class VerbalGuide:
 
     def __init__(self, agent: Union[MABAgent, CBAgent]):
         self.agent = agent
-    
+
     def parse_args_is_agent(self, *args: List[str]) -> Tuple[bool, Any]:
         for arg in args:
             if hasattr(arg, 'act') and hasattr(arg, 'update'):
                 return True, arg
             elif hasattr(arg, 'horizon'):
                 return False, arg
-        
+
         raise ValueError("Unknown argument type. Please pass in the environment or the agent.")
 
     def get_action_guide_info(self, arm: int) -> ActionInfo:
@@ -38,7 +39,7 @@ class VerbalGuide:
         raise NotImplementedError("Only for RL and CB agents")
 
 
-class UCBGuide(VerbalGuide, SampleWithAG):
+class UCBGuide(VerbalGuideBase, SampleWithVerbalGuide):
     # takes in UCBAgent and then return info on each arm (a block of text)
     def __init__(self, *args, **kwargs):
         """
@@ -69,7 +70,7 @@ class UCBGuide(VerbalGuide, SampleWithAG):
         return exp_bonus_guide + exp_value_guide
 
 
-class GreedyGuide(VerbalGuide, SampleWithAG):
+class GreedyGuide(VerbalGuideBase, SampleWithVerbalGuide):
     def __init__(self, *args, **kwargs):
         """
         :param args: Should be either env or agent. Can pass in flags to agent through kwargs (like "alpha=0.5")
@@ -95,7 +96,7 @@ class GreedyGuide(VerbalGuide, SampleWithAG):
         return arm_info
 
 
-class ThompsonSamplingGuide(VerbalGuide, SampleWithAG):
+class ThompsonSamplingGuide(VerbalGuideBase, SampleWithVerbalGuide):
     def __init__(self, *args, **kwargs):
         """
         :param args: Should be either env or agent. Can pass in flags to agent through kwargs (like "alpha=0.5")
@@ -128,7 +129,7 @@ class ThompsonSamplingGuide(VerbalGuide, SampleWithAG):
         return alpha_guide + beta_guide + probability_guide
 
 
-class LinUCBGuide(VerbalGuide, SampleWithAG):
+class LinUCBGuide(VerbalGuideBase, SampleWithVerbalGuide):
     def __init__(self, *args, **kwargs):
         """
         :param args: Should be either env or agent. Can pass in flags to agent through kwargs (like "alpha=0.5")
@@ -162,3 +163,11 @@ class LinUCBGuide(VerbalGuide, SampleWithAG):
             actions_info.append(arm_info)
 
         return actions_info
+
+
+class VerbalGuideBuilder:
+    pass
+
+
+class VerbalGuide:
+    pass

@@ -3,7 +3,7 @@ import re
 from banditbench.tasks.mab import BernoulliBandit, VerbalMultiArmedBandit
 from banditbench.tasks.cb.movielens import MovieLens, MovieLensVerbal
 
-from banditbench.agents.guides import VerbalGuide, UCBGuide, LinUCBGuide
+from banditbench.agents.guides import VerbalGuideBase, UCBGuide, LinUCBGuide
 from banditbench.agents.classics import UCBAgent, LinUCBAgent
 
 from banditbench.agents.llm import (LLMMABAgentRH, LLMMABAgentSH, LLMCBAgentRH, LLMCBAgentRHWithAG, LLMMABAgentSHWithAG,
@@ -263,3 +263,27 @@ def test_general_llm_agent_construction():
 
     agent = LLMAgent.build_with_env(verbal_env, guide, oracle)
     assert isinstance(agent, OracleLLMCBAgentRHWithAG)
+
+def test_llm_agent_builder_construction():
+    # Test MAB agents
+    agent = LLMAgent.build()
+    agent = agent.build_with_env(verbal_bandit)
+    assert isinstance(agent, LLMMABAgentRH)
+
+    agent = LLMAgent.build(summary=True)
+    agent = agent.build_with_env(verbal_bandit)
+    assert isinstance(agent, LLMMABAgentSH)
+
+    guide = UCBGuide(core_bandit)
+    agent = LLMAgent.build(guide, summary=True)
+    agent = agent.build_with_env(verbal_bandit)
+    assert isinstance(agent, LLMMABAgentSHWithAG)
+
+    oracle = UCBAgent(core_bandit)
+    agent = LLMAgent.build(oracle)
+    agent = agent.build_with_env(verbal_bandit)
+    assert isinstance(agent, OracleLLMMAbAgentRH)
+
+    agent = LLMAgent.build(guide, oracle)
+    agent = agent.build_with_env(verbal_bandit)
+    assert isinstance(agent, OracleLLMMABAgentSHWithAG)

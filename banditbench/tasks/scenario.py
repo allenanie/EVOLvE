@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Union, List, Optional
-from banditbench.tasks.typing import State
+from banditbench.tasks.types import State
 
 class BanditScenario:
     name: str

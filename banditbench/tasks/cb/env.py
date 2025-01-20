@@ -3,7 +3,7 @@ import numpy as np
 from pydantic import BaseModel, field_serializer
 from typing import Dict, Any, Tuple, Union, List, Optional, Annotated
 
-from banditbench.tasks.typing import Action, InteractionBase, State, Info
+from banditbench.tasks.types import Action, InteractionBase, State, Info
 from banditbench.tasks.env import Bandit
 
 
