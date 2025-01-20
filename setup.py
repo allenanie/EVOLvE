@@ -13,7 +13,6 @@ install_requires = [
     "pandas",
     "tensorflow_datasets==4.9.3",
     "tensorflow==2.17.0",
-    "numpy==1.25.2",
     "ml-dtypes==0.3.1",
     "matplotlib",
     "scipy"
