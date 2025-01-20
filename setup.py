@@ -7,14 +7,14 @@ with open(os.path.join(here, "banditbench/version.py"), encoding="utf8") as fp:
     exec(fp.read(), version)
 __version__ = version["__version__"]
 
-
 install_requires = [
     "pydantic==2.10.5",
     "litellm",
     "pandas",
     "tensorflow_datasets==4.9.7",
-    "tensorflow==2.15.0",
-    "numpy==1.24.3",
+    "tensorflow==2.17.0",
+    "numpy==1.25.2",
+    "ml-dtypes==0.3.1",
     "matplotlib",
     "scipy"
 ]
