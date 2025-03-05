@@ -16,6 +16,7 @@ from tqdm import tqdm
 
 from copy import deepcopy
 
+
 def get_trajectory_seeds(env_seed, n_trajs):
     """Get seeds for environment and trajectories.
     
@@ -27,11 +28,12 @@ def get_trajectory_seeds(env_seed, n_trajs):
     """
     # Get environment seed or generate random one
     if env_seed is None:
-        env_seed = np.random.randint(0, 2**32-1)
-        
+        env_seed = np.random.randint(0, 2 ** 32 - 1)
+
     # Generate trajectory seeds
     rng = np.random.RandomState(env_seed)
-    return rng.randint(0, 2**32-1, size=n_trajs)
+    return rng.randint(0, 2 ** 32 - 1, size=n_trajs)
+
 
 class SampleBase:
 
@@ -77,6 +79,8 @@ class SampleBase:
             buffer.append(Trajectory(trajectory))
 
         return buffer
+
+
 class VerbalGuideSampleBase:
     # Using AG to collect data will produce trajectory AND fill in side-info for each action
 
@@ -128,15 +132,16 @@ class VerbalGuideSampleBase:
 
         return buffer
 
+
 class AgentSampleBase:
     # Using LLMAgent to collect data will produce trajectory, fill in side-info for each action (optional), AND fill in verbal prompt
     # will fill in side-info only if `ag` is in the LLM Agent
 
     def in_context_learn(self, env: VerbalBandit, n_trajs=20, num_threads=10) -> DatasetBuffer:
-        
+
         is_contextual = hasattr(env.core_bandit, 'feature_dim')
         buffer = DatasetBuffer()
-        
+
         # Get trajectory seeds upfront
         traj_seeds = get_trajectory_seeds(env.core_bandit.seed, n_trajs)
 
@@ -144,17 +149,17 @@ class AgentSampleBase:
             trajectory = []
             ag_info = []
             verbal_prompts = []
-            
+
             # Create a new instance for thread safety
             env_copy = deepcopy(env)
             agent_copy = deepcopy(self)
             agent_copy.reset()
 
             # Set position to ensure proper display of nested progress bars
-            step_pbar = tqdm(total=env_copy.horizon, 
-                            desc=f'Trial {trial_idx+1} steps', 
-                            leave=False,
-                            position=trial_idx + 1)
+            step_pbar = tqdm(total=env_copy.horizon,
+                             desc=f'Trial {trial_idx + 1} steps',
+                             leave=False,
+                             position=trial_idx + 1)
 
             if is_contextual:
                 # Contextual bandit case
@@ -222,7 +227,7 @@ class AgentSampleBase:
             with tqdm(total=n_trajs, desc="Collecting trajectories", position=0) as trial_pbar:
                 with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
                     futures = [executor.submit(collect_single_trajectory, i, traj_seeds[i], trial_pbar)
-                              for i in range(n_trajs)]
+                               for i in range(n_trajs)]
 
                     for future in concurrent.futures.as_completed(futures):
                         trajectory, ag_info, verbal_prompts = future.result()
