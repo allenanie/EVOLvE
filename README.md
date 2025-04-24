@@ -121,6 +121,72 @@ Doing this will give you a plot like this:
   <img src="https://github.com/allenanie/EVOLvE/blob/main/assets/UCBvsLLM.png?raw=true" alt="UCB vs LLM" style="width: 60%;"/>
 </p>
 
+### Getting Task Instruction and Prompts
+
+If you want to obtain task instructions and decision prompts, you can follow the steps below (useful when you want to create your own agent without extending from our agent base class):
+
+For Multi-Armed Bandit:
+```python
+# with the probability of getting a reward to be [0.2, 0.2, 0.2, 0.2, 0.5]
+core_bandit = BernoulliBandit(5, horizon=100, arm_params=[0.2, 0.2, 0.2, 0.2, 0.5])
+
+# The scenario is "ClothesShopping", agent sees actions as clothing items
+verbal_bandit = VerbalMultiArmedBandit(core_bandit, "ClothesShopping")
+
+# We create a dummy agent to access instruction
+agent = LLMAgent.build_with_env(verbal_bandit, summary=True, model="gpt-3.5-turbo")
+
+done = False
+while not done:
+    # Get verbal prompts for this step
+    task_instruction = agent.get_task_instruction()
+    action_history = agent.get_action_history()
+    decision_query = agent.get_decision_query()
+
+    action_verbal = agent.act()
+
+    verbal_prompts.append({
+        'task_instruction': task_instruction,
+        'action_history': action_history,
+        'decision_query': decision_query,
+        'label': action_verbal
+    })
+    _, reward, done, info = verbal_bandit.step(action_verbal)
+
+    action = info['interaction'].mapped_action
+
+    agent.update(action, reward, info)
+```
+
+For Contextual Bandit:
+```python
+from banditbench.tasks.cb.movielens import MovieLens, MovieLensVerbal
+
+env = MovieLens('100k-ratings', num_arms=5, horizon=200, rank_k=5, mode='train',
+                        save_data_dir='./tensorflow_datasets/')
+verbal_env = MovieLensVerbal(env)
+
+agent = LLMAgent.build_with_env(verbal_env, model="gpt-3.5-turbo")
+
+state, _ = verbal_env.reset(seed=1)
+
+done = False
+while not done:
+    # Get verbal prompts for this step
+    task_instruction = agent_copy.get_task_instruction()
+    action_history = agent_copy.get_action_history()
+    decision_query = agent_copy.get_decision_query(state)
+
+    action_verbal = agent.act(state)
+
+    new_state, reward, done, info = verbal_env.step(state, action_verbal)
+
+    action = info['interaction'].mapped_action
+
+    agent.update(state, action, reward, info)
+    state = new_state
+```
+
 ## 💰 Evaluation Cost
 
 Each of the benchmark has a cost estimation tool for the inference cost. The listed cost is in $ amount which contains
