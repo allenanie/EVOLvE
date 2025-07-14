@@ -1,6 +1,6 @@
 <div align="center">
 
-# EVOLvE: Evaluating and Optimizing LLMs For Exploration In-Context
+# EVOLvE: Evaluating and Optimizing LLMs For In-Context Exploration
 
 <p align="center">
   <img src="https://github.com/allenanie/EVOLvE/blob/main/assets/logo.png?raw=true" alt="EVOLvE Logo" width="200" height="200"/>
