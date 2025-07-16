@@ -173,9 +173,9 @@ state, _ = verbal_env.reset(seed=1)
 done = False
 while not done:
     # Get verbal prompts for this step
-    task_instruction = agent_copy.get_task_instruction()
-    action_history = agent_copy.get_action_history()
-    decision_query = agent_copy.get_decision_query(state)
+    task_instruction = agent.get_task_instruction()
+    action_history = agent.get_action_history()
+    decision_query = agent.get_decision_query(state)
 
     action_verbal = agent.act(state)
 
